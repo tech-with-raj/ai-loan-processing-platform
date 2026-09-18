@@ -8,6 +8,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models import Customer
+from app.schemas import CustomerResponse
 
 app = FastAPI(title="BestBank API")
 
@@ -36,9 +38,8 @@ def create_application(application: LoanApplication):
         "status": "created"
     }
 
-@app.get("/customers")
+@app.get("/customers", response_model=list[CustomerResponse])
 def get_customers(db: Session = Depends(get_db)):
-    result = db.execute(text("SELECT * FROM customers"))
-    customers = result.mappings().all()
+    customers = db.query(Customer).all()
 
     return customers
