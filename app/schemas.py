@@ -15,11 +15,20 @@ class CustomerResponse(BaseModel):
         "from_attributes": True
     }
 
-class LoanApplication(BaseModel):
-    customer_name: str
+class LoanApplicationCreate(BaseModel):
+    customer_id: uuid.UUID
     loan_type: str
     loan_amount: float
 
+
 class LoanApplicationResponse(BaseModel):
-    application_id: str
-    status: str 
+    application_id: uuid.UUID
+    customer_id: uuid.UUID
+    loan_type: str
+    loan_amount: float
+    status: str
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
