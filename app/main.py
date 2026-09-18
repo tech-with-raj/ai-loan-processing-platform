@@ -3,6 +3,12 @@ import uuid
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from fastapi import Depends
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+
 app = FastAPI(title="BestBank API")
 
 
@@ -29,3 +35,10 @@ def create_application(application: LoanApplication):
         "application_id": application_id,
         "status": "created"
     }
+
+@app.get("/customers")
+def get_customers(db: Session = Depends(get_db)):
+    result = db.execute(text("SELECT * FROM customers"))
+    customers = result.mappings().all()
+
+    return customers
