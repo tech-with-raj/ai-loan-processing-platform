@@ -9,19 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Customer
-from app.schemas import CustomerResponse
+from app.schemas import CustomerResponse, LoanApplication, LoanApplicationResponse
 
-app = FastAPI(title="BestBank API")
-
-
-class LoanApplication(BaseModel):
-    customer_name: str
-    loan_type: str
-    loan_amount: float
-
-class LoanApplicationResponse(BaseModel):
-    application_id: str
-    status: str    
+app = FastAPI(title="BestBank API")   
 
 
 @app.get("/")

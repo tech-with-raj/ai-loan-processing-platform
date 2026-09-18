@@ -14,3 +14,12 @@ class CustomerResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class LoanApplication(BaseModel):
+    customer_name: str
+    loan_type: str
+    loan_amount: float
+
+class LoanApplicationResponse(BaseModel):
+    application_id: str
+    status: str 
