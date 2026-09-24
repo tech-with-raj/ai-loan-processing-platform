@@ -171,6 +171,54 @@ The project prioritizes durable engineering concepts over dependence on any sing
 - CI/CD
 - AWS
 
+## How to Run Locally
+
+### Backend and PostgreSQL
+
+1. Create and activate a virtual environment, then install dependencies:
+
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+
+2. Copy `.env.example` to `.env`. Start PostgreSQL and apply migrations:
+
+   ```powershell
+   docker compose up -d postgres
+   python -m alembic upgrade head
+   ```
+
+3. Start the API:
+
+   ```powershell
+   uvicorn app.main:app --reload
+   ```
+
+The API is available at `http://localhost:8000`, with interactive docs at
+`http://localhost:8000/docs`. Set `API_KEY` in `.env` before exposing the API
+outside localhost; when set, send it as the `X-API-Key` header.
+
+### Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend is available at `http://localhost:5173`.
+
+### Tests
+
+Tests use PostgreSQL rather than SQLite because the application relies on
+PostgreSQL UUID, enum, and numeric types:
+
+```powershell
+python -m pytest -q
+```
+
 ---
 
 ## Project Architecture
