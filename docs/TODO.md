@@ -34,7 +34,7 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 ## API Structure
 
-- [ ] Review current FastAPI application structure
+- [x] Review current FastAPI application structure
 - [ ] Separate API routes from business logic
 - [ ] Introduce service layer
 - [ ] Organize routes by domain
@@ -43,7 +43,7 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 ## Validation
 
-- [ ] Review request validation
+- [x] Review request validation
 - [ ] Add appropriate field constraints
 - [ ] Validate loan amount
 - [ ] Validate loan type
@@ -64,7 +64,7 @@ We should not jump directly to agentic AI before the backend foundation is relia
 - [ ] Review indexes
 - [ ] Review constraints
 - [ ] Review transaction handling
-- [ ] Review session lifecycle
+- [x] Review session lifecycle
 - [ ] Introduce migrations when schema evolution requires them
 
 ---
@@ -556,7 +556,7 @@ Maintain:
 - [x] `DECISIONS.md`
 - [x] `ROADMAP.md`
 - [x] `LEARNING_LOG.md`
-- [ ] `TODO.md`
+- [x] `TODO.md`
 
 After completing a major feature:
 
