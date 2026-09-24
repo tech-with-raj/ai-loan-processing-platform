@@ -43,7 +43,7 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 ## Validation
 
-- [x] Review request validation
+- [ ] Review request validation
 - [ ] Add appropriate field constraints
 - [ ] Validate loan amount
 - [ ] Validate loan type
@@ -64,7 +64,7 @@ We should not jump directly to agentic AI before the backend foundation is relia
 - [ ] Review indexes
 - [ ] Review constraints
 - [ ] Review transaction handling
-- [x] Review session lifecycle
+- [ ] Review session lifecycle
 - [ ] Introduce migrations when schema evolution requires them
 
 ---
@@ -580,27 +580,16 @@ The next engineering cycle should focus only on the backend foundation.
 
 Priority order:
 
-```text id="4c6pne"
-1. Review current backend
-        ↓
-2. Improve project structure
-        ↓
-3. Introduce service layer
-        ↓
-4. Improve validation
-        ↓
-5. Improve error handling
-        ↓
-6. Add meaningful tests
-        ↓
-7. Verify database behavior
-        ↓
-8. Update documentation
-        ↓
-9. Commit
-        ↓
-10. Push
-```
+- [x] Review current backend
+- [ ] Improve project structure
+- [ ] Introduce service layer
+- [ ] Improve validation
+- [ ] Improve error handling
+- [ ] Add meaningful tests
+- [ ] Verify database behavior
+- [ ] Update documentation
+- [ ] Commit
+- [ ] Push
 
 Do not start RAG or agent frameworks yet.
 
