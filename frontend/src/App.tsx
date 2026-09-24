@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import './App.css'
+import { ApplicationTable } from './components/ApplicationTable'
 import { api } from './services/api'
 import type { CreateApplicationInput, Customer, LoanApplication } from './types'
 
@@ -25,7 +26,7 @@ const documentTypes = [
 const initialForm: CreateApplicationInput = {
   customer_id: '',
   loan_type: 'Personal Loan',
-  loan_amount: 50000,
+  loan_amount: '50000.00',
 }
 
 type AppView = 'dashboard' | 'applications' | 'documents' | 'validation' | 'assistant'
@@ -118,8 +119,8 @@ function App() {
   const summary = useMemo(() => {
     const total = applications.length
     const pendingDocs = applications.filter((application) => application.status === 'CREATED').length
-    const underValidation = applications.filter((application) => application.status === 'UNDER_REVIEW').length
-    const requiresReview = applications.filter((application) => application.status === 'REQUIRES_REVIEW').length
+    const underValidation = applications.filter((application) => application.status === 'VALIDATION').length
+    const requiresReview = applications.filter((application) => application.status === 'REVIEW').length
 
     return {
       total,
@@ -132,7 +133,7 @@ function App() {
   const handleFieldChange = (field: keyof CreateApplicationInput, value: string) => {
     setForm((current) => ({
       ...current,
-      [field]: field === 'loan_amount' ? Number(value) : value,
+      [field]: value,
     }))
   }
 
@@ -172,12 +173,12 @@ function App() {
     setIsAuthenticated(true)
   }
 
-  const formatCurrency = (amount: number) =>
+  const formatCurrency = (amount: string) =>
     new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0,
-    }).format(amount)
+    }).format(Number(amount))
 
   const renderApplicationForm = () => (
     <div className="panel form-panel">
@@ -280,48 +281,11 @@ function App() {
       ) : filteredApplications.length === 0 ? (
         <div className="state-box">No applications match your current filter.</div>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Application ID</th>
-                <th>Customer</th>
-                <th>Loan Type</th>
-                <th>Loan Amount</th>
-                <th>Status</th>
-                <th>Created Date</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApplications.map((application) => {
-                const customer = customers.find((item) => item.customer_id === application.customer_id)
-
-                return (
-                  <tr key={application.application_id}>
-                    <td>{application.application_id.slice(0, 8)}</td>
-                    <td>{customer?.name ?? 'Unknown customer'}</td>
-                    <td>{application.loan_type}</td>
-                    <td>{formatCurrency(application.loan_amount)}</td>
-                    <td>
-                      <span className="status-pill">{application.status}</span>
-                    </td>
-                    <td>{new Date(application.created_at).toLocaleDateString()}</td>
-                    <td>
-                      <button
-                        className="link-button"
-                        type="button"
-                        onClick={() => setSelectedApplicationId(application.application_id)}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+          <ApplicationTable
+            applications={filteredApplications}
+            customers={customers}
+            onSelect={setSelectedApplicationId}
+          />
       )}
     </div>
   )
@@ -386,48 +350,12 @@ function App() {
           ) : filteredApplications.length === 0 ? (
             <div className="state-box">No applications match your current filter.</div>
           ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Application ID</th>
-                    <th>Customer</th>
-                    <th>Loan Type</th>
-                    <th>Loan Amount</th>
-                    <th>Status</th>
-                    <th>Created Date</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredApplications.slice(0, 8).map((application) => {
-                    const customer = customers.find((item) => item.customer_id === application.customer_id)
-
-                    return (
-                      <tr key={application.application_id}>
-                        <td>{application.application_id.slice(0, 8)}</td>
-                        <td>{customer?.name ?? 'Unknown customer'}</td>
-                        <td>{application.loan_type}</td>
-                        <td>{formatCurrency(application.loan_amount)}</td>
-                        <td>
-                          <span className="status-pill">{application.status}</span>
-                        </td>
-                        <td>{new Date(application.created_at).toLocaleDateString()}</td>
-                        <td>
-                          <button
-                            className="link-button"
-                            type="button"
-                            onClick={() => setSelectedApplicationId(application.application_id)}
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <ApplicationTable
+              applications={filteredApplications}
+              customers={customers}
+              maxRows={8}
+              onSelect={setSelectedApplicationId}
+            />
           )}
         </div>
 
