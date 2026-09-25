@@ -15,15 +15,7 @@ The project is currently in the foundational software engineering stage.
 The current implementation focuses on:
 
 ```text
-FastAPI
-   ↓
-API Endpoints
-   ↓
-Pydantic Schemas
-   ↓
-SQLAlchemy
-   ↓
-PostgreSQL
+FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
 
 AI and agentic capabilities have not yet been integrated into the application.
@@ -85,7 +77,11 @@ ai-loan-processing-platform/
 │   ├── database.py
 │   ├── main.py
 │   ├── models.py
-│   └── schemas.py
+│   ├── schemas.py
+│   └── services/
+│       ├── __init__.py
+│       ├── customer_service.py
+│       └── loan_application_service.py
 │
 ├── database/
 │   └── schema.sql
@@ -132,6 +128,8 @@ GET /customers
 POST /applications
 GET /applications
 ```
+
+Customer and loan application creation now use the service layer.
 
 ---
 
@@ -190,6 +188,8 @@ POST /applications
 Purpose:
 
 Create a new loan application.
+
+Loan application creation is handled through the service layer.
 
 Current request data includes:
 

@@ -47,19 +47,7 @@ Each layer should be introduced when there is a clear requirement for it.
 The current implementation is centered around:
 
 ```text
-Client
-   |
-   v
-FastAPI
-   |
-   v
-API Endpoints
-   |
-   v
-SQLAlchemy
-   |
-   v
-PostgreSQL
+FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
 
 The current backend contains:
@@ -81,13 +69,11 @@ PostgreSQL
                       v
                 FastAPI API
                       |
-          +-----------+-----------+
-          |                       |
-          v                       v
-     Pydantic Schemas       API Validation
-          |
-          v
-       SQLAlchemy
+                      v
+                    Service Layer
+                      |
+                      v
+                  SQLAlchemy
           |
           v
       PostgreSQL
@@ -104,6 +90,14 @@ Responsible for:
 - Request handling
 - Dependency injection
 - API responses
+
+### Service Layer
+
+Responsible for:
+
+- Customer creation
+- Loan application creation
+- Business logic separate from API logic
 
 ### Pydantic
 
@@ -142,7 +136,10 @@ app/
 ├── database.py
 ├── main.py
 ├── models.py
-└── schemas.py
+├── schemas.py
+└── services/
+  ├── customer_service.py
+  └── loan_application_service.py
 ```
 
 ### `config.py`
@@ -179,6 +176,10 @@ Contains Pydantic schemas for API contracts.
 ### `main.py`
 
 Contains the FastAPI application and current API endpoints.
+
+### `services/`
+
+Contains service functions used by the API endpoints for customer and loan application creation.
 
 ---
 
