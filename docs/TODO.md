@@ -35,7 +35,7 @@ We should not jump directly to agentic AI before the backend foundation is relia
 ## API Structure
 
 - [x] Review current FastAPI application structure
-- [ ] Separate API routes from business logic
+- [x] Separate API routes from business logic for create operations
 - [x] Introduce service layer
 - [ ] Organize routes by domain
 - [ ] Improve dependency management

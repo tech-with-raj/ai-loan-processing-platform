@@ -58,7 +58,7 @@ def create_customer(
     _: None = Depends(require_api_key),
 ):
     
-    return CustomerService.create_customer(db,customer)
+    return CustomerService.create_customer(db, customer)
 
 
 @app.get("/customers", response_model=list[CustomerResponse])

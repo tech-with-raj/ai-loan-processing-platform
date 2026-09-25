@@ -234,7 +234,7 @@ FastAPI
 Pydantic Validation
   |
   v
-LoanApplication Model
+LoanApplicationService
   |
   v
 SQLAlchemy
