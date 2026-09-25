@@ -122,3 +122,16 @@ def test_application_status_transitions_are_explicit():
 
 def test_decimal_has_two_places():
     assert Decimal("50000.50").quantize(Decimal("0.01")) == Decimal("50000.50")
+
+
+def test_create_customer_rejects_invalid_email(client):
+    response = client.post(
+        "/customers",
+        json={
+            "name": "Test Customer",
+            "email": "invalid-email",
+            "phone": "9876543210",
+        },
+    )
+
+    assert response.status_code == 422    
