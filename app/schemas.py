@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.enums import ApplicationStatus
 
@@ -51,6 +51,18 @@ class LoanApplicationResponse(BaseModel):
     loan_amount: Decimal
     status: ApplicationStatus
     created_at: datetime
+
+    @field_validator("loan_type", mode="before")
+    @classmethod
+    def normalize_legacy_loan_type(cls, value: object) -> object:
+        """Accept legacy enum-style values stored by older seed data."""
+        legacy_values = {
+            "PERSONAL_LOAN": LoanType.PERSONAL.value,
+            "HOME_LOAN": LoanType.HOME.value,
+            "VEHICLE_LOAN": LoanType.VEHICLE.value,
+            "BUSINESS_LOAN": LoanType.BUSINESS.value,
+        }
+        return legacy_values.get(value, value)
 
     model_config = {
         "from_attributes": True
