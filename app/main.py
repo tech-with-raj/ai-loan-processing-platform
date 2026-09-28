@@ -12,6 +12,7 @@ from app.schemas import (
 )
 from app.services.customer_service import CustomerService
 from app.services.loan_application_service import LoanApplicationService
+from app.exceptions import DuplicateCustomerError
 
 
 app = FastAPI(title="BestBank API")
@@ -58,7 +59,10 @@ def create_customer(
     _: None = Depends(require_api_key),
 ):
     
-    return CustomerService.create_customer(db, customer)
+    try:
+        return CustomerService.create_customer(db, customer)
+    except DuplicateCustomerError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.get("/customers", response_model=list[CustomerResponse])

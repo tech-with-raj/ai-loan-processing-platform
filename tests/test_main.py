@@ -124,4 +124,33 @@ def test_create_customer_rejects_invalid_email(client):
         },
     )
 
-    assert response.status_code == 422    
+    assert response.status_code == 422
+
+
+def test_create_customer_rejects_duplicate_email(client):
+    email = f"{uuid.uuid4()}@example.com"
+
+    first_response = client.post(
+        "/customers",
+        json={
+            "name": "First Customer",
+            "email": email,
+            "phone": "9876543210",
+        },
+    )
+
+    assert first_response.status_code == 201
+
+    second_response = client.post(
+        "/customers",
+        json={
+            "name": "Second Customer",
+            "email": email,
+            "phone": "9876543211",
+        },
+    )
+
+    assert second_response.status_code == 409
+    assert second_response.json()["detail"] == (
+        "Customer with this email already exists"
+    )
