@@ -47,19 +47,7 @@ Each layer should be introduced when there is a clear requirement for it.
 The current implementation is centered around:
 
 ```text
-Client
-   |
-   v
-FastAPI
-   |
-   v
-API Endpoints
-   |
-   v
-SQLAlchemy
-   |
-   v
-PostgreSQL
+FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
 
 The current backend contains:
@@ -81,13 +69,11 @@ PostgreSQL
                       v
                 FastAPI API
                       |
-          +-----------+-----------+
-          |                       |
-          v                       v
-     Pydantic Schemas       API Validation
-          |
-          v
-       SQLAlchemy
+                      v
+                    Service Layer
+                      |
+                      v
+                  SQLAlchemy
           |
           v
       PostgreSQL
@@ -104,6 +90,17 @@ Responsible for:
 - Request handling
 - Dependency injection
 - API responses
+- Translating `DuplicateCustomerError` into HTTP 409 Conflict
+
+### Service Layer
+
+Responsible for:
+
+- Customer creation
+- Loan application creation
+- Business logic separate from API logic
+- Translating duplicate-customer persistence errors into `DuplicateCustomerError`
+- Remaining independent of HTTP concerns
 
 ### Pydantic
 
@@ -142,7 +139,10 @@ app/
 ├── database.py
 ├── main.py
 ├── models.py
-└── schemas.py
+├── schemas.py
+└── services/
+  ├── customer_service.py
+  └── loan_application_service.py
 ```
 
 ### `config.py`
@@ -180,6 +180,10 @@ Contains Pydantic schemas for API contracts.
 
 Contains the FastAPI application and current API endpoints.
 
+### `services/`
+
+Contains service functions used by the API endpoints for customer and loan application creation.
+
 ---
 
 # 6. Current Data Architecture
@@ -215,10 +219,30 @@ Current API endpoints:
 
 ```text
 GET  /
+POST /customers
 GET  /customers
 POST /applications
 GET  /applications
 ```
+
+Customer creation follows this flow:
+
+```text
+POST /customers
+  ↓
+FastAPI request validation
+  ↓
+CustomerService
+  ↓
+SQLAlchemy
+  ↓
+PostgreSQL UNIQUE constraint
+```
+
+If the customer email already exists, `CustomerService` rolls back the
+transaction and raises the application-level `DuplicateCustomerError`.
+FastAPI translates that exception into HTTP 409 Conflict. The service layer
+does not raise or depend on `HTTPException`.
 
 The current flow for creating a loan application is:
 
@@ -233,7 +257,7 @@ FastAPI
 Pydantic Validation
   |
   v
-LoanApplication Model
+LoanApplicationService
   |
   v
 SQLAlchemy
@@ -245,6 +269,9 @@ PostgreSQL
 ---
 
 # 8. Target Backend Architecture
+
+This is a future architecture. A repository/data-access layer is not currently
+implemented; current persistence goes from the service layer through SQLAlchemy.
 
 As the system grows, business logic should not remain entirely inside API route handlers.
 

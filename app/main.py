@@ -1,12 +1,8 @@
-import uuid
-
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-
 from app.config import API_KEY
 from app.database import get_db
-from app.enums import ApplicationStatus
 from app.models import Customer, LoanApplication
 from app.schemas import (
     CustomerCreate,
@@ -14,6 +10,10 @@ from app.schemas import (
     LoanApplicationCreate,
     LoanApplicationResponse,
 )
+from app.services.customer_service import CustomerService
+from app.services.loan_application_service import LoanApplicationService
+from app.exceptions import DuplicateCustomerError
+
 
 app = FastAPI(title="BestBank API")
 
@@ -39,31 +39,16 @@ def root():
     return {"message": "BestBank API is running"}
 
 
-@app.post(
-    "/applications",
-    status_code=201,
-    response_model=LoanApplicationResponse,
-)
+@app.post("/applications", status_code=201, response_model=LoanApplicationResponse)
 def create_application(
     application: LoanApplicationCreate,
     db: Session = Depends(get_db),
     _: None = Depends(require_api_key),
 ):
-    if db.get(Customer, application.customer_id) is None:
-        raise HTTPException(status_code=404, detail="Customer not found")
-
-    new_application = LoanApplication(
-        application_id=uuid.uuid4(),
-        customer_id=application.customer_id,
-        loan_type=application.loan_type.value,
-        loan_amount=application.loan_amount,
-        status=ApplicationStatus.CREATED,
-    )
-
-    db.add(new_application)
-    db.commit()
-    db.refresh(new_application)
-    return new_application
+    try:
+        return LoanApplicationService.create_application(db, application)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 
@@ -73,16 +58,11 @@ def create_customer(
     db: Session = Depends(get_db),
     _: None = Depends(require_api_key),
 ):
-    new_customer = Customer(
-        customer_id=uuid.uuid4(),
-        name=customer.name,
-        email=customer.email,
-        phone=customer.phone,
-    )
-    db.add(new_customer)
-    db.commit()
-    db.refresh(new_customer)
-    return new_customer
+    
+    try:
+        return CustomerService.create_customer(db, customer)
+    except DuplicateCustomerError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.get("/customers", response_model=list[CustomerResponse])

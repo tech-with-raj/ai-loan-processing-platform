@@ -18,7 +18,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 application_status = postgresql.ENUM(
     "CREATED", "DOCUMENTS_PENDING", "PROCESSING", "VALIDATION",
-    "REVIEW", "APPROVED", "REJECTED", name="application_status"
+    "REVIEW", "APPROVED", "REJECTED", name="application_status",
+    create_type=False,
 )
 
 

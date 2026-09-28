@@ -180,6 +180,18 @@ Database Access
 
 Foundation established.
 
+## Service Layer Refactoring
+
+The service layer refactor reinforced these concepts:
+
+- Separation of concerns
+- Service layer responsibilities
+- Business logic versus API logic
+- Refactoring without changing behavior
+- Test verification after structural changes
+
+Customer and loan application creation now delegate from the API layer to services, keeping business logic separate from request handling while preserving existing behavior.
+
 ---
 
 # 5. REST APIs

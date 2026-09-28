@@ -3,8 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
-
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.enums import ApplicationStatus
 
 
@@ -29,7 +28,7 @@ class CustomerResponse(BaseModel):
 
 class CustomerCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    email: str = Field(min_length=3, max_length=255)
+    email: EmailStr
     phone: str | None = Field(default=None, max_length=20)
 
 

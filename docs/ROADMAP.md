@@ -61,15 +61,7 @@ Backend Foundation + Database Integration
 Current architecture:
 
 ```text
-Client
-   ↓
-FastAPI
-   ↓
-API Endpoints
-   ↓
-SQLAlchemy
-   ↓
-PostgreSQL
+FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
 
 Implemented foundation:
@@ -84,7 +76,9 @@ Implemented foundation:
 - Pydantic schemas
 - Environment-based database configuration
 - Basic API/database integration
-- Initial test structure
+- Service-layer customer and loan application creation
+- Duplicate customer email handling with HTTP 409 response
+- 21 passing service and API tests
 - Git/GitHub project management
 - Persistent project documentation
 
@@ -172,11 +166,9 @@ The database can persist loan application information.
 ## Remaining work
 
 - Improve project structure
-- Introduce service layer
-- Improve validation
-- Improve error handling
+- Extend validation and error handling for additional cases
 - Improve database handling
-- Add stronger tests
+- Expand test coverage for broader database behavior
 - Establish consistent API behavior
 
 ## Completion criteria
@@ -203,7 +195,7 @@ Transform the basic backend into a more production-oriented service.
 
 ## Build
 
-- Service layer
+- Extend service-layer coverage as backend capabilities grow
 - Repository/data-access patterns where justified
 - Request validation
 - Response validation

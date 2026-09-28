@@ -3,10 +3,8 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session
 
-from app.database import engine, get_db
+from app.database import get_db
 from app.enums import (
     APPLICATION_STATUS_TRANSITIONS,
     ApplicationStatus,
@@ -16,25 +14,17 @@ from app.main import app
 
 
 @pytest.fixture()
-def client():
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = Session(bind=connection, join_transaction_mode="create_savepoint")
-
+def client(db_session):
     def override_get_db():
-        yield session
+        yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+
     try:
         with TestClient(app) as test_client:
             yield test_client
-    except OperationalError:
-        pytest.skip("PostgreSQL is required; start it with docker compose up -d postgres")
     finally:
         app.dependency_overrides.clear()
-        session.close()
-        transaction.rollback()
-        connection.close()
 
 
 def create_customer(client: TestClient) -> str:
@@ -122,3 +112,45 @@ def test_application_status_transitions_are_explicit():
 
 def test_decimal_has_two_places():
     assert Decimal("50000.50").quantize(Decimal("0.01")) == Decimal("50000.50")
+
+
+def test_create_customer_rejects_invalid_email(client):
+    response = client.post(
+        "/customers",
+        json={
+            "name": "Test Customer",
+            "email": "invalid-email",
+            "phone": "9876543210",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_customer_rejects_duplicate_email(client):
+    email = f"{uuid.uuid4()}@example.com"
+
+    first_response = client.post(
+        "/customers",
+        json={
+            "name": "First Customer",
+            "email": email,
+            "phone": "9876543210",
+        },
+    )
+
+    assert first_response.status_code == 201
+
+    second_response = client.post(
+        "/customers",
+        json={
+            "name": "Second Customer",
+            "email": email,
+            "phone": "9876543211",
+        },
+    )
+
+    assert second_response.status_code == 409
+    assert second_response.json()["detail"] == (
+        "Customer with this email already exists"
+    )

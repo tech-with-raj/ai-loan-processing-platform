@@ -1023,7 +1023,30 @@ Accepted.
 
 ---
 
-# 26. Decision Evolution Rule
+# 26. Duplicate Customer Email Error Handling
+
+## Decision
+
+The database unique constraint remains authoritative for customer email
+uniqueness. The service layer translates the resulting persistence error into
+the application-level `DuplicateCustomerError`, and the API layer translates
+that exception into HTTP 409 Conflict.
+
+The service layer remains transport-independent and does not raise
+`HTTPException`.
+
+## Why
+
+This keeps data integrity enforced by PostgreSQL while separating persistence
+error handling from HTTP response behavior.
+
+## Status
+
+Accepted.
+
+---
+
+# 27. Decision Evolution Rule
 
 These decisions are not permanent.
 
