@@ -90,6 +90,7 @@ Responsible for:
 - Request handling
 - Dependency injection
 - API responses
+- Translating `DuplicateCustomerError` into HTTP 409 Conflict
 
 ### Service Layer
 
@@ -98,6 +99,8 @@ Responsible for:
 - Customer creation
 - Loan application creation
 - Business logic separate from API logic
+- Translating duplicate-customer persistence errors into `DuplicateCustomerError`
+- Remaining independent of HTTP concerns
 
 ### Pydantic
 
@@ -216,10 +219,30 @@ Current API endpoints:
 
 ```text
 GET  /
+POST /customers
 GET  /customers
 POST /applications
 GET  /applications
 ```
+
+Customer creation follows this flow:
+
+```text
+POST /customers
+  ↓
+FastAPI request validation
+  ↓
+CustomerService
+  ↓
+SQLAlchemy
+  ↓
+PostgreSQL UNIQUE constraint
+```
+
+If the customer email already exists, `CustomerService` rolls back the
+transaction and raises the application-level `DuplicateCustomerError`.
+FastAPI translates that exception into HTTP 409 Conflict. The service layer
+does not raise or depend on `HTTPException`.
 
 The current flow for creating a loan application is:
 
@@ -246,6 +269,9 @@ PostgreSQL
 ---
 
 # 8. Target Backend Architecture
+
+This is a future architecture. A repository/data-access layer is not currently
+implemented; current persistence goes from the service layer through SQLAlchemy.
 
 As the system grows, business logic should not remain entirely inside API route handlers.
 

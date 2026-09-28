@@ -43,18 +43,20 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 ## Validation
 
-- [ ] Review request validation
-- [ ] Add appropriate field constraints
-- [ ] Validate loan amount
-- [ ] Validate loan type
-- [ ] Validate customer information
-- [ ] Validate referenced customer IDs
+- [x] Review current request validation
+- [x] Add field constraints for current request schemas
+- [x] Validate loan amount
+- [x] Validate loan type
+- [x] Validate customer information
+- [x] Validate referenced customer IDs
 
 ## Error Handling
 
 - [ ] Add consistent HTTP error responses
-- [ ] Handle missing customers
-- [ ] Handle invalid application requests
+- [x] Handle missing customers
+- [x] Handle invalid application requests
+- [x] Handle duplicate customer email
+- [x] Map duplicate customer errors to HTTP 409
 - [ ] Handle database errors
 - [ ] Add centralized exception handling where appropriate
 
@@ -65,7 +67,7 @@ We should not jump directly to agentic AI before the backend foundation is relia
 - [ ] Review constraints
 - [ ] Review transaction handling
 - [ ] Review session lifecycle
-- [ ] Introduce migrations when schema evolution requires them
+- [x] Add initial Alembic schema migrations
 
 ---
 
@@ -73,19 +75,20 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 ## Unit Testing
 
-- [ ] Add service-layer unit tests
-- [ ] Test validation rules
-- [ ] Test business logic
-- [ ] Test error conditions
+- [x] Add service-layer tests
+- [x] Test validation rules
+- [x] Test business logic
+- [x] Test error conditions
 
 ## API Testing
 
-- [ ] Test `GET /`
-- [ ] Test `GET /customers`
-- [ ] Test `GET /applications`
-- [ ] Test `POST /applications`
-- [ ] Test invalid requests
-- [ ] Test missing resources
+- [x] Test `GET /`
+- [x] Test `GET /customers`
+- [x] Test `GET /applications`
+- [x] Test `POST /customers`
+- [x] Test `POST /applications`
+- [x] Test invalid requests
+- [x] Test missing resources
 - [ ] Test database failures
 
 ## Integration Testing
@@ -97,20 +100,20 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 ## Test Quality
 
-- [ ] Establish meaningful test coverage
-- [ ] Add regression tests for important bugs
+- [x] Establish meaningful test coverage for current backend behavior
+- [x] Add regression tests for duplicate customer email handling
 - [ ] Separate unit and integration tests where useful
 
 ---
 
 # 4. Customer Management
 
-- [ ] Create customer API
+- [x] Create customer API
 - [ ] Retrieve customer
 - [ ] Update customer
-- [ ] Validate customer data
-- [ ] Handle duplicate customer information
-- [ ] Add customer tests
+- [x] Validate customer data
+- [x] Handle duplicate customer email
+- [x] Add customer tests
 
 Target API structure:
 
@@ -127,7 +130,7 @@ The exact API design may evolve as implementation progresses.
 
 # 5. Loan Application Management
 
-- [ ] Improve loan application creation
+- [x] Create loan applications through the service layer
 - [ ] Retrieve individual applications
 - [ ] Update application status
 - [ ] Validate application state transitions
@@ -582,7 +585,7 @@ Priority order:
 
 - [x] Review current backend
 - [ ] Improve project structure
-- [ ] Introduce service layer
+- [x] Introduce service layer for create operations
 - [ ] Improve validation
 - [ ] Improve error handling
 - [ ] Add meaningful tests

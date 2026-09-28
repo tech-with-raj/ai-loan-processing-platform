@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-09-25
+2026-09-28
 
 ---
 
@@ -75,6 +75,8 @@ ai-loan-processing-platform/
 │   ├── __init__.py
 │   ├── config.py
 │   ├── database.py
+│   ├── enums.py
+│   ├── exceptions.py
 │   ├── main.py
 │   ├── models.py
 │   ├── schemas.py
@@ -82,6 +84,12 @@ ai-loan-processing-platform/
 │       ├── __init__.py
 │       ├── customer_service.py
 │       └── loan_application_service.py
+│
+├── alembic/
+│   ├── env.py
+│   └── versions/
+│       ├── 20260924_initial_schema.py
+│       └── 20260924_customer_timestamp_timezone.py
 │
 ├── database/
 │   └── schema.sql
@@ -99,6 +107,8 @@ ai-loan-processing-platform/
 │
 ├── tests/
 │   ├── __init__.py
+│   ├── test_customer_service.py
+│   ├── test_loan_application_service.py
 │   └── test_main.py
 │
 ├── .gitignore
@@ -124,6 +134,7 @@ The application currently exposes:
 
 ```text
 GET /
+POST /customers
 GET /customers
 POST /applications
 GET /applications
@@ -158,14 +169,31 @@ Expected response:
 ### Customer Endpoint
 
 ```text
+POST /customers
 GET /customers
 ```
 
-Purpose:
+`POST /customers` creates a customer through `CustomerService`.
+Customer request data is validated by Pydantic. Duplicate email handling
+uses the database unique constraint as the authority:
 
-Retrieve customers from the database.
+```text
+PostgreSQL UNIQUE constraint
+        ↓
+SQLAlchemy IntegrityError
+        ↓
+CustomerService rolls back and raises DuplicateCustomerError
+        ↓
+FastAPI returns HTTP 409 Conflict
+```
 
-The endpoint uses:
+`DuplicateCustomerError` is an application-level exception defined in
+`app/exceptions.py`. The service layer does not depend on HTTP exceptions.
+
+`GET /customers` retrieves customers from the database directly through
+SQLAlchemy.
+
+The customer listing endpoint uses:
 
 ```text
 FastAPI
@@ -411,29 +439,27 @@ This is a future target, not the current implementation.
 
 ## 13. Current Testing Status
 
-The repository contains a test structure:
+The repository contains 21 passing tests across service and API tests:
 
 ```text
 tests/
 ├── __init__.py
+├── test_customer_service.py
+├── test_loan_application_service.py
 └── test_main.py
 ```
 
-Automated test coverage is still at an early stage and needs to be expanded as backend functionality grows.
+Current tests cover:
 
-Future testing should cover:
+- Customer creation and duplicate email errors at service level
+- Loan application creation and missing-customer validation
+- Duplicate customer email returning HTTP 409
+- Invalid customer email and invalid loan request validation
+- Existing API behavior, including listing and pagination
 
-```text
-API behavior
-Database operations
-Validation
-Business logic
-Error handling
-AI outputs
-Agent behavior
-Tool execution
-End-to-end workflows
-```
+Broader database failure, transaction, integration, and future AI workflow
+coverage remains to be added as those capabilities are developed.
+
 
 ---
 
@@ -448,13 +474,13 @@ These include:
 ```text
 Authentication
 Authorization
-Robust input validation
+Additional input validation
 Centralized error handling
 Structured logging
 Security controls
 Secrets management
-Database migrations
-Automated testing
+Production migration workflow
+Broader automated test coverage
 CI/CD
 Docker
 Observability
@@ -541,13 +567,9 @@ The next work should progressively address:
 ```text
 Backend structure
         ↓
-Business/service layer
+Extend validation and error handling
         ↓
-Validation
-        ↓
-Error handling
-        ↓
-Testing
+Broader database and API tests
         ↓
 Authentication / authorization
         ↓
@@ -594,7 +616,7 @@ Customer model          : Implemented
 Loan application model  : Implemented
 Customer API            : Implemented
 Loan application API    : Implemented
-Basic testing           : Started
+Automated tests         : 21 passing
 AI integration          : Not started
 RAG                     : Not started
 Tool calling            : Not started
