@@ -3,10 +3,8 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session
 
-from app.database import engine, get_db
+from app.database import get_db
 from app.enums import (
     APPLICATION_STATUS_TRANSITIONS,
     ApplicationStatus,
@@ -16,25 +14,17 @@ from app.main import app
 
 
 @pytest.fixture()
-def client():
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = Session(bind=connection, join_transaction_mode="create_savepoint")
-
+def client(db_session):
     def override_get_db():
-        yield session
+        yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+
     try:
         with TestClient(app) as test_client:
             yield test_client
-    except OperationalError:
-        pytest.skip("PostgreSQL is required; start it with docker compose up -d postgres")
     finally:
         app.dependency_overrides.clear()
-        session.close()
-        transaction.rollback()
-        connection.close()
 
 
 def create_customer(client: TestClient) -> str:
