@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 
 from app.enums import ApplicationStatus
+from app.exceptions import CustomerNotFoundError
 from app.models import Customer
 from app.schemas import LoanApplicationCreate
 from app.services.loan_application_service import LoanApplicationService
@@ -52,7 +53,7 @@ def test_create_application_for_missing_customer(db_session):
         loan_amount=Decimal("50000.00"),
     )
 
-    with pytest.raises(ValueError, match="Customer not found"):
+    with pytest.raises(CustomerNotFoundError, match="Customer not found"):
         LoanApplicationService.create_application(
             db_session,
             application,

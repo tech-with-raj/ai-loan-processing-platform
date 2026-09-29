@@ -1,4 +1,5 @@
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.config import API_KEY
@@ -12,20 +13,21 @@ from app.schemas import (
 )
 from app.services.customer_service import CustomerService
 from app.services.loan_application_service import LoanApplicationService
-from app.exceptions import DuplicateCustomerError
-
+from app.exception_handlers import register_exception_handlers
 
 app = FastAPI(title="BestBank API")
+
+register_exception_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -45,11 +47,7 @@ def create_application(
     db: Session = Depends(get_db),
     _: None = Depends(require_api_key),
 ):
-    try:
-        return LoanApplicationService.create_application(db, application)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-
+    return LoanApplicationService.create_application(db, application)
 
 
 @app.post("/customers", response_model=CustomerResponse, status_code=201)
@@ -58,11 +56,8 @@ def create_customer(
     db: Session = Depends(get_db),
     _: None = Depends(require_api_key),
 ):
-    
-    try:
-        return CustomerService.create_customer(db, customer)
-    except DuplicateCustomerError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+
+    return CustomerService.create_customer(db, customer)
 
 
 @app.get("/customers", response_model=list[CustomerResponse])
@@ -72,9 +67,14 @@ def get_customers(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
-    customers = db.query(Customer).order_by(Customer.created_at.desc()).offset(offset).limit(limit).all()
+    customers = (
+        db.query(Customer)
+        .order_by(Customer.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     return customers
-
 
 
 @app.get(

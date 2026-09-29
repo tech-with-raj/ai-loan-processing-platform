@@ -3,20 +3,19 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.enums import ApplicationStatus
+from app.exceptions import CustomerNotFoundError
 from app.models import Customer, LoanApplication
 from app.schemas import LoanApplicationCreate
 
 
 class LoanApplicationService:
-
     @staticmethod
     def create_application(
         db: Session,
         application: LoanApplicationCreate,
     ) -> LoanApplication:
-
         if db.get(Customer, application.customer_id) is None:
-            raise ValueError("Customer not found")
+            raise CustomerNotFoundError("Customer not found")
 
         new_application = LoanApplication(
             application_id=uuid.uuid4(),
