@@ -1,4 +1,5 @@
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.config import API_KEY
@@ -12,10 +13,12 @@ from app.schemas import (
 )
 from app.services.customer_service import CustomerService
 from app.services.loan_application_service import LoanApplicationService
-from app.exceptions import DuplicateCustomerError
+from app.exception_handlers import register_exception_handlers
 
 
 app = FastAPI(title="BestBank API")
+
+register_exception_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,10 +48,7 @@ def create_application(
     db: Session = Depends(get_db),
     _: None = Depends(require_api_key),
 ):
-    try:
-        return LoanApplicationService.create_application(db, application)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+    return LoanApplicationService.create_application(db, application)
 
 
 
@@ -59,10 +59,7 @@ def create_customer(
     _: None = Depends(require_api_key),
 ):
     
-    try:
-        return CustomerService.create_customer(db, customer)
-    except DuplicateCustomerError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+    return CustomerService.create_customer(db, customer)
 
 
 @app.get("/customers", response_model=list[CustomerResponse])
