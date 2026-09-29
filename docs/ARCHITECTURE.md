@@ -90,6 +90,8 @@ Responsible for:
 - Request handling
 - Dependency injection
 - API responses
+- Registering centralized application exception handlers
+- Translating `CustomerNotFoundError` into HTTP 404 Not Found
 - Translating `DuplicateCustomerError` into HTTP 409 Conflict
 
 ### Service Layer
@@ -100,6 +102,7 @@ Responsible for:
 - Loan application creation
 - Business logic separate from API logic
 - Translating duplicate-customer persistence errors into `DuplicateCustomerError`
+- Raising `CustomerNotFoundError` when a referenced customer does not exist
 - Remaining independent of HTTP concerns
 
 ### Pydantic
@@ -137,6 +140,8 @@ Current backend components include:
 app/
 ├── config.py
 ├── database.py
+├── exceptions.py
+├── exception_handlers.py
 ├── main.py
 ├── models.py
 ├── schemas.py
@@ -241,8 +246,33 @@ PostgreSQL UNIQUE constraint
 
 If the customer email already exists, `CustomerService` rolls back the
 transaction and raises the application-level `DuplicateCustomerError`.
-FastAPI translates that exception into HTTP 409 Conflict. The service layer
-does not raise or depend on `HTTPException`.
+The centralized exception handler translates it into HTTP 409 Conflict. The
+service layer does not raise or depend on `HTTPException`.
+
+Application exceptions inherit from `ApplicationError`:
+
+```text
+ApplicationError
+├── DuplicateCustomerError
+└── CustomerNotFoundError
+```
+
+The exception flow is:
+
+```text
+Service Layer
+  ↓
+Application Exception
+  ↓
+Centralized Exception Handler
+  ↓
+HTTP Response
+```
+
+`LoanApplicationService` raises `CustomerNotFoundError` when the referenced
+customer is missing. The centralized handler maps it to HTTP 404 Not Found;
+`DuplicateCustomerError` maps to HTTP 409 Conflict. Route-level try/except
+handling is not used in `main.py`.
 
 The current flow for creating a loan application is:
 
