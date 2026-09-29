@@ -25,8 +25,7 @@ async def handle_duplicate_customer(
         status_code=409,
         content={"detail": str(exc)},
     )
-    
-    
+
 
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
@@ -36,4 +35,4 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         DuplicateCustomerError,
         handle_duplicate_customer,
-    )    
+    )
