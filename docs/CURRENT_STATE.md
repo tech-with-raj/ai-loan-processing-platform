@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-09-28
+2026-09-29
 
 ---
 
@@ -184,7 +184,7 @@ SQLAlchemy IntegrityError
         ↓
 CustomerService rolls back and raises DuplicateCustomerError
         ↓
-FastAPI returns HTTP 409 Conflict
+Centralized exception handler returns HTTP 409 Conflict
 ```
 
 `DuplicateCustomerError` is an application-level exception defined in
@@ -218,6 +218,8 @@ Purpose:
 Create a new loan application.
 
 Loan application creation is handled through the service layer.
+When the referenced customer does not exist, `LoanApplicationService` raises
+`CustomerNotFoundError` instead of a generic `ValueError`.
 
 Current request data includes:
 
@@ -234,6 +236,32 @@ status = CREATED
 ```
 
 A UUID is generated for the application.
+
+### Application Exception Handling
+
+Application exceptions share a common base class:
+
+```text
+ApplicationError
+├── DuplicateCustomerError
+└── CustomerNotFoundError
+```
+
+The service layer raises these application-specific exceptions and remains
+independent of HTTP concepts such as `HTTPException`. FastAPI handles them
+centrally:
+
+```text
+Application Exception
+        ↓
+Centralized FastAPI Exception Handler
+        ↓
+HTTP Response
+```
+
+`CustomerNotFoundError` maps to HTTP 404 Not Found, and
+`DuplicateCustomerError` maps to HTTP 409 Conflict. Route-level exception
+handling is not required in `main.py`.
 
 ---
 
@@ -460,6 +488,8 @@ Current tests cover:
 Broader database failure, transaction, integration, and future AI workflow
 coverage remains to be added as those capabilities are developed.
 
+Backend CI is passing after PR #2 was merged into `main`.
+
 
 ---
 
@@ -475,7 +505,7 @@ These include:
 Authentication
 Authorization
 Additional input validation
-Centralized error handling
+Database error handling
 Structured logging
 Security controls
 Secrets management

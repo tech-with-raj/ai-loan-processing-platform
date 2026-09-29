@@ -28,6 +28,14 @@ AI Integration
 
 We should not jump directly to agentic AI before the backend foundation is reliable.
 
+Next backend reliability work:
+
+1. Database error handling
+2. Transaction and session handling
+3. Individual customer and loan application retrieval endpoints
+4. FastAPI + PostgreSQL integration testing
+5. Docker and production backend work
+
 ---
 
 # 2. Backend Foundation
@@ -52,13 +60,13 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 ## Error Handling
 
-- [ ] Add consistent HTTP error responses
+- [x] Add consistent HTTP error responses
 - [x] Handle missing customers
 - [x] Handle invalid application requests
 - [x] Handle duplicate customer email
 - [x] Map duplicate customer errors to HTTP 409
+- [x] Add centralized application exception handling
 - [ ] Handle database errors
-- [ ] Add centralized exception handling where appropriate
 
 ## Database
 
