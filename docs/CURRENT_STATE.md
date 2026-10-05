@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-09-29
+2026-10-05
 
 ---
 
@@ -142,6 +142,16 @@ GET /applications
 
 Customer and loan application creation now use the service layer.
 
+`CustomerService` and `LoanApplicationService` handle SQLAlchemy errors raised
+by their commit operations. Customer integrity errors are translated to
+`DuplicateCustomerError`; other commit-time SQLAlchemy errors are translated
+to `DatabaseOperationError`. Both services roll back the session when a
+caught commit error occurs. Failure-path unit tests verify that rollback is
+called and `DatabaseOperationError` is raised.
+
+This does not complete the broader transaction/session review or PostgreSQL
+integration testing.
+
 ---
 
 ## 5. Current API Functionality
@@ -244,7 +254,8 @@ Application exceptions share a common base class:
 ```text
 ApplicationError
 ├── DuplicateCustomerError
-└── CustomerNotFoundError
+├── CustomerNotFoundError
+└── DatabaseOperationError
 ```
 
 The service layer raises these application-specific exceptions and remains
@@ -467,7 +478,7 @@ This is a future target, not the current implementation.
 
 ## 13. Current Testing Status
 
-The repository contains 21 passing tests across service and API tests:
+The repository contains 23 passing tests across service and API tests:
 
 ```text
 tests/
@@ -480,13 +491,17 @@ tests/
 Current tests cover:
 
 - Customer creation and duplicate email errors at service level
+- Customer service commit failure handling, rollback, and
+  `DatabaseOperationError`
 - Loan application creation and missing-customer validation
+- Loan application service commit failure handling, rollback, and
+  `DatabaseOperationError`
 - Duplicate customer email returning HTTP 409
 - Invalid customer email and invalid loan request validation
 - Existing API behavior, including listing and pagination
 
-Broader database failure, transaction, integration, and future AI workflow
-coverage remains to be added as those capabilities are developed.
+Broader transaction/session review, PostgreSQL integration tests, and future AI
+workflow coverage remain to be added as those capabilities are developed.
 
 Backend CI is passing after PR #2 was merged into `main`.
 
@@ -505,7 +520,7 @@ These include:
 Authentication
 Authorization
 Additional input validation
-Database error handling
+Broader database error handling beyond the current service commit-failure paths
 Structured logging
 Security controls
 Secrets management
@@ -547,6 +562,10 @@ Environment configuration
 Git
 GitHub
 ```
+
+The current reliability milestone additionally covers database transactions,
+COMMIT versus ROLLBACK, SQLAlchemy session lifecycle, service-level transaction
+handling, failure-path testing, and application-level database exceptions.
 
 The project is intentionally being used to learn these concepts through implementation rather than theory alone.
 
@@ -595,11 +614,13 @@ The immediate focus should remain on strengthening the backend foundation.
 The next work should progressively address:
 
 ```text
-Backend structure
+Transaction and session review
         ↓
-Extend validation and error handling
+Individual customer and loan application retrieval
         ↓
-Broader database and API tests
+PostgreSQL integration testing
+        ↓
+Docker and production backend work
         ↓
 Authentication / authorization
         ↓
@@ -646,7 +667,9 @@ Customer model          : Implemented
 Loan application model  : Implemented
 Customer API            : Implemented
 Loan application API    : Implemented
-Automated tests         : 21 passing
+Database commit error handling : Implemented in customer and loan application services
+Rollback on handled commit errors : Implemented and failure-path tested
+Automated tests         : 23 passing
 AI integration          : Not started
 RAG                     : Not started
 Tool calling            : Not started

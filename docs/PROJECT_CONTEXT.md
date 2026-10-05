@@ -111,6 +111,27 @@ The project prioritizes durable engineering concepts over dependence on any sing
 
 ---
 
+## Current Implementation Snapshot
+
+The current working implementation is focused on the backend foundation:
+
+- Customer and loan application creation use service-layer code.
+- `CustomerService` translates commit-time `IntegrityError` failures to
+  `DuplicateCustomerError`; other commit-time SQLAlchemy errors in both
+  services are translated to `DatabaseOperationError`.
+- Both services roll back after handled commit-time SQLAlchemy failures.
+- Failure-path tests verify rollback and `DatabaseOperationError` for both
+  services.
+- The full test suite currently passes: 23 tests.
+
+This does not complete transaction/session review, individual customer or
+loan application retrieval, PostgreSQL integration testing, or production
+backend work. Document processing, AI integration, RAG, tools, agentic
+workflows, human-in-the-loop, controlled autonomy, evaluation,
+security/observability, and cloud deployment remain planned work.
+
+---
+
 ## 6. Technology Stack
 
 ### Backend
@@ -571,4 +592,3 @@ Human + Autonomous Digital Systems
 
 while maintaining appropriate human oversight for important banking operations.
 ---
-

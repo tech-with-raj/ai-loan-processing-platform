@@ -78,7 +78,10 @@ Implemented foundation:
 - Basic API/database integration
 - Service-layer customer and loan application creation
 - Duplicate customer email handling with HTTP 409 response
-- 21 passing service and API tests
+- Customer and loan application service commit-failure handling with rollback
+  and application-level `DatabaseOperationError`
+- Failure-path tests for both services
+- 23 passing service and API tests
 - Git/GitHub project management
 - Persistent project documentation
 
@@ -167,9 +170,13 @@ The database can persist loan application information.
 
 - Improve project structure
 - Extend validation and error handling for additional cases
-- Improve database handling
+- Review transaction handling and SQLAlchemy session lifecycle
 - Expand test coverage for broader database behavior
 - Establish consistent API behavior
+
+Service-level handling of commit-time SQLAlchemy errors is implemented.
+Broader transaction/session review and PostgreSQL integration testing remain
+incomplete.
 
 ## Completion criteria
 
@@ -207,6 +214,12 @@ Transform the basic backend into a more production-oriented service.
 - Filtering
 - API versioning where appropriate
 - Automated tests
+
+Service-level commit-failure handling now rolls back and raises an
+application-level database exception for the customer and loan application
+creation flows. This is a completed part of database error handling; it does
+not mean the broader transaction/session handling work or PostgreSQL
+integration testing is complete.
 
 ## Engineering skills
 

@@ -30,11 +30,10 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 Next backend reliability work:
 
-1. Database error handling
-2. Transaction and session handling
-3. Individual customer and loan application retrieval endpoints
-4. FastAPI + PostgreSQL integration testing
-5. Docker and production backend work
+1. Transaction and session review
+2. Individual customer and loan application retrieval endpoints
+3. FastAPI + PostgreSQL integration testing
+4. Docker and production backend work
 
 ---
 
@@ -66,7 +65,9 @@ Next backend reliability work:
 - [x] Handle duplicate customer email
 - [x] Map duplicate customer errors to HTTP 409
 - [x] Add centralized application exception handling
-- [ ] Handle database errors
+- [x] Handle commit-time SQLAlchemy errors in CustomerService and
+  LoanApplicationService with rollback and DatabaseOperationError
+- [ ] Review broader database error handling and transaction/session behavior
 
 ## Database
 
@@ -87,6 +88,7 @@ Next backend reliability work:
 - [x] Test validation rules
 - [x] Test business logic
 - [x] Test error conditions
+- [x] Test service commit failures, rollback, and DatabaseOperationError
 
 ## API Testing
 
@@ -97,7 +99,6 @@ Next backend reliability work:
 - [x] Test `POST /applications`
 - [x] Test invalid requests
 - [x] Test missing resources
-- [ ] Test database failures
 
 ## Integration Testing
 
@@ -595,12 +596,16 @@ Priority order:
 - [ ] Improve project structure
 - [x] Introduce service layer for create operations
 - [ ] Improve validation
-- [ ] Improve error handling
+- [ ] Complete remaining error-handling review
 - [ ] Add meaningful tests
 - [ ] Verify database behavior
 - [ ] Update documentation
 - [ ] Commit
 - [ ] Push
+
+The database commit-failure handling milestone is implemented and tested.
+Transaction/session review, individual retrieval endpoints, PostgreSQL
+integration testing, and Docker/production backend work remain incomplete.
 
 Do not start RAG or agent frameworks yet.
 

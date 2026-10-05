@@ -530,6 +530,24 @@ Leaving database resources open can create reliability and scalability problems.
 
 Understood and implemented at the foundation level.
 
+### Transaction and Failure-Path Learning
+
+This reliability milestone applied and recorded:
+
+- Database transactions and the distinction between `COMMIT` and `ROLLBACK`
+- SQLAlchemy session lifecycle and service-level transaction handling
+- Rolling back after a handled commit-time database failure
+- Translating persistence failures into application-level database exceptions
+- Testing failure paths by asserting both the exception and rollback behavior
+
+`CustomerService` handles `IntegrityError` as `DuplicateCustomerError` and
+translates other commit-time SQLAlchemy errors to `DatabaseOperationError`.
+`LoanApplicationService` translates commit-time SQLAlchemy errors to
+`DatabaseOperationError`. Both services roll back for the caught commit-time
+errors. Unit tests exercise the general SQLAlchemy failure path for both
+services and verify rollback. Broader transaction/session review and
+PostgreSQL integration testing remain incomplete.
+
 ---
 
 # 14. Pydantic
@@ -1078,9 +1096,15 @@ Target learning:
 - Logging
 - Database transactions
 
+Covered so far: service-layer transaction handling for the current create
+flows, database exception translation, rollback behavior, and failure-path
+testing. The broader production-backend milestone remains in progress;
+transaction/session review, integration testing, logging, and other backend
+work are not complete.
+
 Status:
 
-**Next**
+**In progress**
 
 ---
 
