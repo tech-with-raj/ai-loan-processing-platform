@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.exceptions import (
     CustomerNotFoundError,
+    DatabaseOperationError,
     DuplicateCustomerError,
 )
 
@@ -27,6 +28,16 @@ async def handle_duplicate_customer(
     )
 
 
+async def handle_database_operation(
+    request: Request,
+    exc: DatabaseOperationError,
+):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         CustomerNotFoundError,
@@ -35,4 +46,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         DuplicateCustomerError,
         handle_duplicate_customer,
+    )
+    app.add_exception_handler(
+        DatabaseOperationError,
+        handle_database_operation,
     )

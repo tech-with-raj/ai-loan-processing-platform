@@ -10,6 +10,7 @@ from app.enums import (
     ApplicationStatus,
     can_transition,
 )
+from app.exceptions import DatabaseOperationError
 from app.main import app
 
 
@@ -154,3 +155,28 @@ def test_create_customer_rejects_duplicate_email(client):
     assert second_response.json()["detail"] == (
         "Customer with this email already exists"
     )
+
+
+def test_database_operation_error_returns_internal_server_error(
+    client,
+    monkeypatch,
+):
+    def fail_to_create_customer(db, customer):
+        raise DatabaseOperationError("Database operation failed")
+
+    monkeypatch.setattr(
+        "app.main.CustomerService.create_customer",
+        fail_to_create_customer,
+    )
+
+    response = client.post(
+        "/customers",
+        json={
+            "name": "Test Customer",
+            "email": f"{uuid.uuid4()}@example.com",
+            "phone": "9876543210",
+        },
+    )
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Database operation failed"}

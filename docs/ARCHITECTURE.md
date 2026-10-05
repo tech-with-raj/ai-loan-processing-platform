@@ -93,6 +93,7 @@ Responsible for:
 - Registering centralized application exception handlers
 - Translating `CustomerNotFoundError` into HTTP 404 Not Found
 - Translating `DuplicateCustomerError` into HTTP 409 Conflict
+- Translating `DatabaseOperationError` into HTTP 500 Internal Server Error
 
 ### Service Layer
 
@@ -274,8 +275,10 @@ HTTP Response
 
 `LoanApplicationService` raises `CustomerNotFoundError` when the referenced
 customer is missing. The centralized handler maps it to HTTP 404 Not Found;
-`DuplicateCustomerError` maps to HTTP 409 Conflict. Route-level try/except
-handling is not used in `main.py`.
+`DuplicateCustomerError` maps to HTTP 409 Conflict, and
+`DatabaseOperationError` maps to HTTP 500 Internal Server Error. These
+responses use the existing `{"detail": ...}` structure. Route-level
+try/except handling is not used in `main.py`.
 
 For commit-time database failures during customer or loan application
 creation, the services roll back the SQLAlchemy session and raise
