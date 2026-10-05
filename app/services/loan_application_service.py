@@ -3,7 +3,11 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.enums import ApplicationStatus
-from app.exceptions import CustomerNotFoundError
+from sqlalchemy.exc import SQLAlchemyError
+from app.exceptions import (
+    CustomerNotFoundError,
+    DatabaseOperationError,
+)
 from app.models import Customer, LoanApplication
 from app.schemas import LoanApplicationCreate
 
@@ -26,7 +30,13 @@ class LoanApplicationService:
         )
 
         db.add(new_application)
-        db.commit()
+        try:
+            db.commit()
+        except SQLAlchemyError as exc:
+            db.rollback()
+            raise DatabaseOperationError(
+                "Database operation failed"
+            ) from exc
         db.refresh(new_application)
 
         return new_application

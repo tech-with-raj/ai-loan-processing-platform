@@ -8,3 +8,7 @@ class DuplicateCustomerError(ApplicationError):
 
 class CustomerNotFoundError(ApplicationError):
     """Raised when the requested customer does not exist."""
+
+    
+class DatabaseOperationError(ApplicationError):
+    """Raised when a database operation fails."""    
