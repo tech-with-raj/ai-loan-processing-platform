@@ -67,7 +67,7 @@ def test_create_application_rolls_back_on_database_error():
 
     customer_id = uuid.uuid4()
 
-    db.query.return_value.filter.return_value.first.return_value = Customer(
+    db.get.return_value = Customer(
         customer_id=customer_id,
         name="Test Customer",
         email="database-error@example.com",

@@ -12,3 +12,7 @@ class CustomerNotFoundError(ApplicationError):
     
 class DatabaseOperationError(ApplicationError):
     """Raised when a database operation fails."""    
+
+
+class ApplicationNotFoundError(ApplicationError):
+    """Raised when the requested loan application does not exist."""

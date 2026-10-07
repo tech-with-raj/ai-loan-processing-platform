@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.exceptions import (
+    CustomerNotFoundError,
     DatabaseOperationError,
     DuplicateCustomerError,
 )
@@ -42,3 +43,17 @@ class CustomerService:
             
         db.refresh(new_customer)
         return new_customer   
+
+
+
+    @staticmethod
+    def get_customer(
+        db: Session,
+        customer_id: uuid.UUID,
+    ) -> Customer:
+        customer = db.get(Customer, customer_id)
+
+        if customer is None:
+            raise CustomerNotFoundError("Customer not found")
+
+        return customer

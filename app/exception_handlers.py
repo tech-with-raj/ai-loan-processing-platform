@@ -5,6 +5,7 @@ from app.exceptions import (
     CustomerNotFoundError,
     DatabaseOperationError,
     DuplicateCustomerError,
+    ApplicationNotFoundError
 )
 
 
@@ -37,6 +38,15 @@ async def handle_database_operation(
         content={"detail": str(exc)},
     )
 
+async def handle_application_not_found(
+    request: Request,
+    exc: ApplicationNotFoundError,
+):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc)},
+    )
+
 
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
@@ -50,4 +60,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         DatabaseOperationError,
         handle_database_operation,
+    )
+    app.add_exception_handler(
+        ApplicationNotFoundError,
+        handle_application_not_found,
     )

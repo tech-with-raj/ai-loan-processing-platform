@@ -37,8 +37,74 @@ def create_customer(client: TestClient) -> str:
     return response.json()["customer_id"]
 
 
+def create_application(client: TestClient, customer_id: str) -> str:
+    response = client.post(
+        "/applications",
+        json={
+            "customer_id": customer_id,
+            "loan_type": "Personal Loan",
+            "loan_amount": "50000.00",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["application_id"]
+
+
 def test_root(client):
     assert client.get("/").json() == {"message": "BestBank API is running"}
+
+
+def test_get_existing_customer(client):
+    customer_id = create_customer(client)
+
+    response = client.get(f"/customers/{customer_id}")
+
+    assert response.status_code == 200
+    assert response.json()["customer_id"] == customer_id
+    assert response.json()["name"] == "Test Customer"
+
+
+def test_get_missing_customer(client):
+    customer_id = str(uuid.uuid4())
+
+    response = client.get(f"/customers/{customer_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Customer not found"}
+
+
+def test_get_customer_with_invalid_uuid(client):
+    response = client.get("/customers/not-a-uuid")
+
+    assert response.status_code == 422
+
+
+def test_get_existing_application(client):
+    customer_id = create_customer(client)
+    application_id = create_application(client, customer_id)
+
+    response = client.get(f"/applications/{application_id}")
+
+    assert response.status_code == 200
+    assert response.json()["application_id"] == application_id
+    assert response.json()["customer_id"] == customer_id
+    assert response.json()["loan_type"] == "Personal Loan"
+    assert response.json()["loan_amount"] == "50000.00"
+
+
+def test_get_missing_application(client):
+    application_id = str(uuid.uuid4())
+
+    response = client.get(f"/applications/{application_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Loan application not found"}
+
+
+def test_get_application_with_invalid_uuid(client):
+    response = client.get("/applications/not-a-uuid")
+
+    assert response.status_code == 422
 
 
 def test_rejects_unknown_loan_type(client):

@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -95,3 +97,27 @@ def get_applications(
         .all()
     )
     return applications
+
+
+@app.get(
+    "/customers/{customer_id}",
+    response_model=CustomerResponse,
+)
+def get_customer(
+    customer_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    return CustomerService.get_customer(db, customer_id)
+
+
+@app.get(
+    "/applications/{application_id}",
+    response_model=LoanApplicationResponse,
+)
+def get_application(
+    application_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    return LoanApplicationService.get_application(db, application_id)

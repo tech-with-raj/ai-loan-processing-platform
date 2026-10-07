@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.enums import ApplicationStatus
 from sqlalchemy.exc import SQLAlchemyError
 from app.exceptions import (
+    ApplicationNotFoundError,
     CustomerNotFoundError,
     DatabaseOperationError,
 )
@@ -40,3 +41,15 @@ class LoanApplicationService:
         db.refresh(new_application)
 
         return new_application
+
+    @staticmethod
+    def get_application(
+        db: Session,
+        application_id: uuid.UUID,
+    ) -> LoanApplication:
+        application = db.get(LoanApplication, application_id)
+
+        if application is None:
+            raise ApplicationNotFoundError("Loan application not found")
+
+        return application
