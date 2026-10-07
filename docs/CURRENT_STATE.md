@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-10-05
+2026-10-07
 
 ---
 
@@ -136,8 +136,10 @@ The application currently exposes:
 GET /
 POST /customers
 GET /customers
+GET /customers/{customer_id}
 POST /applications
 GET /applications
+GET /applications/{application_id}
 ```
 
 Customer and loan application creation now use the service layer.
@@ -149,8 +151,8 @@ to `DatabaseOperationError`. Both services roll back the session when a
 caught commit error occurs. Failure-path unit tests verify that rollback is
 called and `DatabaseOperationError` is raised.
 
-This does not complete the broader transaction/session review or PostgreSQL
-integration testing.
+The transaction/session review and commit-time database error handling are
+complete. PostgreSQL integration testing remains incomplete.
 
 ---
 
@@ -181,6 +183,7 @@ Expected response:
 ```text
 POST /customers
 GET /customers
+GET /customers/{customer_id}
 ```
 
 `POST /customers` creates a customer through `CustomerService`.
@@ -202,6 +205,10 @@ Centralized exception handler returns HTTP 409 Conflict
 
 `GET /customers` retrieves customers from the database directly through
 SQLAlchemy.
+
+`GET /customers/{customer_id}` retrieves one customer through
+`CustomerService`. A missing customer returns HTTP 404, and an invalid UUID
+returns HTTP 422.
 
 The customer listing endpoint uses:
 
@@ -255,6 +262,7 @@ Application exceptions share a common base class:
 ApplicationError
 ├── DuplicateCustomerError
 ├── CustomerNotFoundError
+├── ApplicationNotFoundError
 └── DatabaseOperationError
 ```
 
@@ -272,7 +280,8 @@ HTTP Response
 
 `CustomerNotFoundError` maps to HTTP 404 Not Found, and
 `DuplicateCustomerError` maps to HTTP 409 Conflict. Route-level exception
-handling is not required in `main.py`.
+handling is not required in `main.py`. `ApplicationNotFoundError` maps to
+HTTP 404 Not Found for an application that does not exist.
 
 ---
 
@@ -280,11 +289,15 @@ handling is not required in `main.py`.
 
 ```text
 GET /applications
+GET /applications/{application_id}
 ```
 
-Purpose:
+`GET /applications` retrieves loan applications from the database.
 
-Retrieve loan applications from the database.
+`GET /applications/{application_id}` retrieves one loan application through
+`LoanApplicationService`. A missing application raises
+`ApplicationNotFoundError` and returns HTTP 404. Invalid UUIDs for either
+individual retrieval endpoint return HTTP 422.
 
 ---
 
@@ -478,7 +491,7 @@ This is a future target, not the current implementation.
 
 ## 13. Current Testing Status
 
-The repository contains 23 passing tests across service and API tests:
+The repository contains 30 passing tests across service and API tests:
 
 ```text
 tests/
@@ -496,12 +509,16 @@ Current tests cover:
 - Loan application creation and missing-customer validation
 - Loan application service commit failure handling, rollback, and
   `DatabaseOperationError`
+- Successful individual customer and loan application retrieval
+- Missing individual customers and loan applications returning HTTP 404
+- Invalid UUIDs for both individual retrieval endpoints returning HTTP 422
 - Duplicate customer email returning HTTP 409
 - Invalid customer email and invalid loan request validation
 - Existing API behavior, including listing and pagination
 
-Broader transaction/session review, PostgreSQL integration tests, and future AI
-workflow coverage remain to be added as those capabilities are developed.
+Transaction/session review and commit-time database error handling are
+complete. PostgreSQL integration tests and future AI workflow coverage remain
+to be added as those capabilities are developed.
 
 Backend CI is passing after PR #2 was merged into `main`.
 
@@ -609,14 +626,12 @@ The goal is to understand how AI becomes part of a real software system.
 
 ## 17. Current Next Direction
 
-The immediate focus should remain on strengthening the backend foundation.
+The immediate backend priority is the application status transition workflow.
 
 The next work should progressively address:
 
 ```text
-Transaction and session review
-        ↓
-Individual customer and loan application retrieval
+Application status transition workflow
         ↓
 PostgreSQL integration testing
         ↓
@@ -667,9 +682,13 @@ Customer model          : Implemented
 Loan application model  : Implemented
 Customer API            : Implemented
 Loan application API    : Implemented
+Individual customer retrieval : Implemented; 404 and invalid-UUID 422 tested
+Individual application retrieval : Implemented; 404 and invalid-UUID 422 tested
+ApplicationNotFoundError : Implemented and centrally handled
+Transaction/session review : Completed
 Database commit error handling : Implemented in customer and loan application services
 Rollback on handled commit errors : Implemented and failure-path tested
-Automated tests         : 23 passing
+Automated tests         : 30 passing
 AI integration          : Not started
 RAG                     : Not started
 Tool calling            : Not started
@@ -680,5 +699,5 @@ Observability           : Not started
 Production deployment   : Not started
 
 Current focus:
-Backend foundation and production-oriented software engineering.
+Application status transition workflow, followed by PostgreSQL integration testing.
 ```

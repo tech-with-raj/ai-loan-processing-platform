@@ -77,13 +77,21 @@ Implemented foundation:
 - Environment-based database configuration
 - Basic API/database integration
 - Service-layer customer and loan application creation
+- Individual customer and loan application retrieval, including 404 handling
+  and 422 validation for invalid UUIDs
+- `ApplicationNotFoundError` with centralized HTTP 404 handling
 - Duplicate customer email handling with HTTP 409 response
 - Customer and loan application service commit-failure handling with rollback
   and application-level `DatabaseOperationError`
 - Failure-path tests for both services
-- 23 passing service and API tests
+- Transaction/session review
+- API tests for successful individual retrieval, missing-resource 404, and
+  invalid-UUID 422 behavior
+- 30 passing service and API tests
 - Git/GitHub project management
 - Persistent project documentation
+
+The next backend priority is the application status transition workflow.
 
 AI and agentic capabilities are not yet implemented.
 
@@ -170,12 +178,12 @@ The database can persist loan application information.
 
 - Improve project structure
 - Extend validation and error handling for additional cases
-- Review transaction handling and SQLAlchemy session lifecycle
+- Implement the application status transition workflow
 - Expand test coverage for broader database behavior
 - Establish consistent API behavior
 
-Service-level handling of commit-time SQLAlchemy errors is implemented.
-Broader transaction/session review and PostgreSQL integration testing remain
+Transaction/session review and service-level handling of commit-time
+SQLAlchemy errors are complete. PostgreSQL integration testing remains
 incomplete.
 
 ## Completion criteria
@@ -218,8 +226,8 @@ Transform the basic backend into a more production-oriented service.
 Service-level commit-failure handling now rolls back and raises an
 application-level database exception for the customer and loan application
 creation flows. This is a completed part of database error handling; it does
-not mean the broader transaction/session handling work or PostgreSQL
-integration testing is complete.
+not mean that all database error handling or PostgreSQL integration testing
+is complete. The transaction/session review is complete.
 
 ## Engineering skills
 

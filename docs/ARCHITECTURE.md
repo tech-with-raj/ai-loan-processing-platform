@@ -92,6 +92,7 @@ Responsible for:
 - API responses
 - Registering centralized application exception handlers
 - Translating `CustomerNotFoundError` into HTTP 404 Not Found
+- Translating `ApplicationNotFoundError` into HTTP 404 Not Found
 - Translating `DuplicateCustomerError` into HTTP 409 Conflict
 - Translating `DatabaseOperationError` into HTTP 500 Internal Server Error
 
@@ -101,6 +102,7 @@ Responsible for:
 
 - Customer creation
 - Loan application creation
+- Individual customer and loan application retrieval
 - Business logic separate from API logic
 - Translating duplicate-customer persistence errors into `DuplicateCustomerError`
 - Rolling back and translating commit-time SQLAlchemy errors into
@@ -229,8 +231,10 @@ Current API endpoints:
 GET  /
 POST /customers
 GET  /customers
+GET  /customers/{customer_id}
 POST /applications
 GET  /applications
+GET  /applications/{application_id}
 ```
 
 Customer creation follows this flow:
@@ -258,6 +262,7 @@ Application exceptions inherit from `ApplicationError`:
 ApplicationError
 ├── DuplicateCustomerError
 ├── CustomerNotFoundError
+├── ApplicationNotFoundError
 └── DatabaseOperationError
 ```
 
@@ -280,12 +285,18 @@ customer is missing. The centralized handler maps it to HTTP 404 Not Found;
 responses use the existing `{"detail": ...}` structure. Route-level
 try/except handling is not used in `main.py`.
 
+`CustomerService` and `LoanApplicationService` retrieve individual resources
+by UUID. Missing customers and applications map to HTTP 404, with
+`ApplicationNotFoundError` used for a missing loan application. FastAPI
+returns HTTP 422 for invalid UUID path parameters. API tests cover successful
+retrieval and these missing-resource and invalid-UUID responses.
+
 For commit-time database failures during customer or loan application
 creation, the services roll back the SQLAlchemy session and raise
 `DatabaseOperationError`. Customer `IntegrityError` failures instead roll
 back and raise `DuplicateCustomerError`. Failure-path tests cover rollback and
-the application-level error for general SQLAlchemy commit failures. Broader
-transaction/session review and PostgreSQL integration testing remain
+the application-level error for general SQLAlchemy commit failures. The
+transaction/session review is complete; PostgreSQL integration testing remains
 incomplete.
 
 The current flow for creating a loan application is:

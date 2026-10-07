@@ -28,12 +28,11 @@ AI Integration
 
 We should not jump directly to agentic AI before the backend foundation is reliable.
 
-Next backend reliability work:
+Next backend work:
 
-1. Transaction and session review
-2. Individual customer and loan application retrieval endpoints
-3. FastAPI + PostgreSQL integration testing
-4. Docker and production backend work
+1. Application status transition workflow
+2. FastAPI + PostgreSQL integration testing
+3. Docker and production backend work
 
 ---
 
@@ -67,15 +66,16 @@ Next backend reliability work:
 - [x] Add centralized application exception handling
 - [x] Handle commit-time SQLAlchemy errors in CustomerService and
   LoanApplicationService with rollback and DatabaseOperationError
-- [ ] Review broader database error handling and transaction/session behavior
+- [x] Review transaction/session behavior
+- [ ] Review database error handling beyond the current commit-failure paths
 
 ## Database
 
 - [ ] Review database schema
 - [ ] Review indexes
 - [ ] Review constraints
-- [ ] Review transaction handling
-- [ ] Review session lifecycle
+- [x] Review transaction handling
+- [x] Review session lifecycle
 - [x] Add initial Alembic schema migrations
 
 ---
@@ -94,7 +94,11 @@ Next backend reliability work:
 
 - [x] Test `GET /`
 - [x] Test `GET /customers`
+- [x] Test `GET /customers/{customer_id}` success, missing-resource 404, and
+  invalid-UUID 422 behavior
 - [x] Test `GET /applications`
+- [x] Test `GET /applications/{application_id}` success, missing-resource 404,
+  and invalid-UUID 422 behavior
 - [x] Test `POST /customers`
 - [x] Test `POST /applications`
 - [x] Test invalid requests
@@ -118,7 +122,7 @@ Next backend reliability work:
 # 4. Customer Management
 
 - [x] Create customer API
-- [ ] Retrieve customer
+- [x] Retrieve customer
 - [ ] Update customer
 - [x] Validate customer data
 - [x] Handle duplicate customer email
@@ -140,7 +144,7 @@ The exact API design may evolve as implementation progresses.
 # 5. Loan Application Management
 
 - [x] Create loan applications through the service layer
-- [ ] Retrieve individual applications
+- [x] Retrieve individual applications
 - [ ] Update application status
 - [ ] Validate application state transitions
 - [ ] Add application filtering
@@ -603,9 +607,10 @@ Priority order:
 - [ ] Commit
 - [ ] Push
 
-The database commit-failure handling milestone is implemented and tested.
-Transaction/session review, individual retrieval endpoints, PostgreSQL
-integration testing, and Docker/production backend work remain incomplete.
+Transaction/session review, commit-time database error handling, and
+individual retrieval endpoints are complete. Application status transition
+workflow is the next backend priority. PostgreSQL integration testing and
+Docker/production backend work remain incomplete.
 
 Do not start RAG or agent frameworks yet.
 

@@ -116,19 +116,28 @@ The project prioritizes durable engineering concepts over dependence on any sing
 The current working implementation is focused on the backend foundation:
 
 - Customer and loan application creation use service-layer code.
+- Individual customer and loan application retrieval use UUID path parameters.
+- Missing customers and applications return HTTP 404; invalid UUIDs on both
+  retrieval endpoints return HTTP 422.
+- `ApplicationNotFoundError` represents a missing loan application and is
+  centrally translated to HTTP 404.
 - `CustomerService` translates commit-time `IntegrityError` failures to
   `DuplicateCustomerError`; other commit-time SQLAlchemy errors in both
   services are translated to `DatabaseOperationError`.
 - Both services roll back after handled commit-time SQLAlchemy failures.
 - Failure-path tests verify rollback and `DatabaseOperationError` for both
   services.
-- The full test suite currently passes: 23 tests.
+- Transaction/session review and commit-time database error handling are
+  complete.
+- API tests cover successful individual retrieval, missing-resource 404, and
+  invalid-UUID 422 behavior.
+- The full test suite currently passes: 30 tests.
 
-This does not complete transaction/session review, individual customer or
-loan application retrieval, PostgreSQL integration testing, or production
-backend work. Document processing, AI integration, RAG, tools, agentic
-workflows, human-in-the-loop, controlled autonomy, evaluation,
-security/observability, and cloud deployment remain planned work.
+The application status transition workflow is the next backend priority.
+PostgreSQL integration testing and production backend work remain incomplete.
+Document processing, AI integration, RAG, tools, agentic workflows,
+human-in-the-loop, controlled autonomy, evaluation, security/observability,
+and cloud deployment remain planned work.
 
 ---
 

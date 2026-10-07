@@ -214,7 +214,9 @@ Examples:
 
 ```text
 GET /customers
+GET /customers/{customer_id}
 GET /applications
+GET /applications/{application_id}
 POST /applications
 ```
 
@@ -223,6 +225,10 @@ POST /applications
 The API is a boundary between clients and backend services.
 
 The API should expose business capabilities without exposing internal implementation details unnecessarily.
+
+Individual retrieval endpoints use UUID path parameters. Successful retrieval
+returns the requested resource, missing resources return HTTP 404, and invalid
+UUIDs return HTTP 422.
 
 ## Status
 
@@ -545,8 +551,8 @@ translates other commit-time SQLAlchemy errors to `DatabaseOperationError`.
 `LoanApplicationService` translates commit-time SQLAlchemy errors to
 `DatabaseOperationError`. Both services roll back for the caught commit-time
 errors. Unit tests exercise the general SQLAlchemy failure path for both
-services and verify rollback. Broader transaction/session review and
-PostgreSQL integration testing remain incomplete.
+services and verify rollback. The transaction/session review is complete;
+PostgreSQL integration testing remains incomplete.
 
 ---
 
@@ -1098,9 +1104,11 @@ Target learning:
 
 Covered so far: service-layer transaction handling for the current create
 flows, database exception translation, rollback behavior, and failure-path
-testing. The broader production-backend milestone remains in progress;
-transaction/session review, integration testing, logging, and other backend
-work are not complete.
+testing. Transaction/session review is complete. Individual resource
+retrieval is implemented and tested, with 30 tests currently passing. The
+broader production-backend milestone remains in progress; PostgreSQL
+integration testing, logging, and other backend work are not complete. The
+application status transition workflow is the next backend priority.
 
 Status:
 
