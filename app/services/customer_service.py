@@ -1,9 +1,13 @@
 import uuid
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.exceptions import DuplicateCustomerError
+from app.exceptions import (
+    CustomerNotFoundError,
+    DatabaseOperationError,
+    DuplicateCustomerError,
+)
 from app.models import Customer
 from app.schemas import CustomerCreate
 
@@ -31,7 +35,25 @@ class CustomerService:
             raise DuplicateCustomerError(
                 "Customer with this email already exists"
             ) from exc
-
+        except SQLAlchemyError as exc:
+            db.rollback()
+            raise DatabaseOperationError(
+                "Database operation failed"
+            ) from exc
+            
         db.refresh(new_customer)
+        return new_customer   
 
-        return new_customer
+
+
+    @staticmethod
+    def get_customer(
+        db: Session,
+        customer_id: uuid.UUID,
+    ) -> Customer:
+        customer = db.get(Customer, customer_id)
+
+        if customer is None:
+            raise CustomerNotFoundError("Customer not found")
+
+        return customer

@@ -14,7 +14,9 @@ Tasks should be updated as the project progresses.
 
 # 1. Current Priority
 
-The immediate goal is:
+The immediate backend priority is PostgreSQL integration testing.
+
+The broader project direction is:
 
 ```text id="y4p4b1"
 Strengthen Backend Foundation
@@ -28,13 +30,10 @@ AI Integration
 
 We should not jump directly to agentic AI before the backend foundation is reliable.
 
-Next backend reliability work:
+Next backend work:
 
-1. Database error handling
-2. Transaction and session handling
-3. Individual customer and loan application retrieval endpoints
-4. FastAPI + PostgreSQL integration testing
-5. Docker and production backend work
+1. FastAPI + PostgreSQL integration testing
+2. Docker and production backend work
 
 ---
 
@@ -66,15 +65,18 @@ Next backend reliability work:
 - [x] Handle duplicate customer email
 - [x] Map duplicate customer errors to HTTP 409
 - [x] Add centralized application exception handling
-- [ ] Handle database errors
+- [x] Handle commit-time SQLAlchemy errors in CustomerService and
+  LoanApplicationService with rollback and DatabaseOperationError
+- [x] Review transaction/session behavior
+- [ ] Review database error handling beyond the current commit-failure paths
 
 ## Database
 
 - [ ] Review database schema
 - [ ] Review indexes
 - [ ] Review constraints
-- [ ] Review transaction handling
-- [ ] Review session lifecycle
+- [x] Review transaction handling
+- [x] Review session lifecycle
 - [x] Add initial Alembic schema migrations
 
 ---
@@ -87,17 +89,24 @@ Next backend reliability work:
 - [x] Test validation rules
 - [x] Test business logic
 - [x] Test error conditions
+- [x] Test service commit failures, rollback, and DatabaseOperationError
 
 ## API Testing
 
 - [x] Test `GET /`
 - [x] Test `GET /customers`
+- [x] Test `GET /customers/{customer_id}` success, missing-resource 404, and
+  invalid-UUID 422 behavior
 - [x] Test `GET /applications`
+- [x] Test `GET /applications/{application_id}` success, missing-resource 404,
+  and invalid-UUID 422 behavior
 - [x] Test `POST /customers`
 - [x] Test `POST /applications`
+- [x] Test `PATCH /applications/{application_id}/status` for allowed and
+  disallowed transitions, invalid statuses, missing applications, and
+  persisted updates
 - [x] Test invalid requests
 - [x] Test missing resources
-- [ ] Test database failures
 
 ## Integration Testing
 
@@ -117,7 +126,7 @@ Next backend reliability work:
 # 4. Customer Management
 
 - [x] Create customer API
-- [ ] Retrieve customer
+- [x] Retrieve customer
 - [ ] Update customer
 - [x] Validate customer data
 - [x] Handle duplicate customer email
@@ -139,12 +148,12 @@ The exact API design may evolve as implementation progresses.
 # 5. Loan Application Management
 
 - [x] Create loan applications through the service layer
-- [ ] Retrieve individual applications
-- [ ] Update application status
-- [ ] Validate application state transitions
+- [x] Retrieve individual applications
+- [x] Update application status
+- [x] Validate application state transitions
 - [ ] Add application filtering
 - [ ] Add pagination where required
-- [ ] Add application tests
+- [x] Add application tests
 
 Potential lifecycle:
 
@@ -312,7 +321,7 @@ Initial tools may include:
 - [ ] `validate_application`
 - [ ] `retrieve_policy`
 - [ ] `create_validation_issue`
-- [ ] `update_application_status`
+- [x] `update_application_status`
 - [ ] `request_human_review`
 
 For every tool:
@@ -595,12 +604,17 @@ Priority order:
 - [ ] Improve project structure
 - [x] Introduce service layer for create operations
 - [ ] Improve validation
-- [ ] Improve error handling
+- [ ] Complete remaining error-handling review
 - [ ] Add meaningful tests
 - [ ] Verify database behavior
 - [ ] Update documentation
 - [ ] Commit
 - [ ] Push
+
+Transaction/session review, commit-time database error handling, individual
+retrieval endpoints, and the application status transition workflow are
+complete. PostgreSQL integration testing is the immediate next backend task;
+Docker/production backend work follows it and remains incomplete.
 
 Do not start RAG or agent frameworks yet.
 

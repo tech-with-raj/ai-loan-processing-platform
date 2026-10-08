@@ -214,7 +214,9 @@ Examples:
 
 ```text
 GET /customers
+GET /customers/{customer_id}
 GET /applications
+GET /applications/{application_id}
 POST /applications
 ```
 
@@ -223,6 +225,10 @@ POST /applications
 The API is a boundary between clients and backend services.
 
 The API should expose business capabilities without exposing internal implementation details unnecessarily.
+
+Individual retrieval endpoints use UUID path parameters. Successful retrieval
+returns the requested resource, missing resources return HTTP 404, and invalid
+UUIDs return HTTP 422.
 
 ## Status
 
@@ -529,6 +535,24 @@ Leaving database resources open can create reliability and scalability problems.
 ## Status
 
 Understood and implemented at the foundation level.
+
+### Transaction and Failure-Path Learning
+
+This reliability milestone applied and recorded:
+
+- Database transactions and the distinction between `COMMIT` and `ROLLBACK`
+- SQLAlchemy session lifecycle and service-level transaction handling
+- Rolling back after a handled commit-time database failure
+- Translating persistence failures into application-level database exceptions
+- Testing failure paths by asserting both the exception and rollback behavior
+
+`CustomerService` handles `IntegrityError` as `DuplicateCustomerError` and
+translates other commit-time SQLAlchemy errors to `DatabaseOperationError`.
+`LoanApplicationService` translates commit-time SQLAlchemy errors to
+`DatabaseOperationError`. Both services roll back for the caught commit-time
+errors. Unit tests exercise the general SQLAlchemy failure path for both
+services and verify rollback. The transaction/session review is complete;
+PostgreSQL integration testing remains incomplete.
 
 ---
 
@@ -1078,9 +1102,18 @@ Target learning:
 - Logging
 - Database transactions
 
+Covered so far: service-layer transaction handling for the current create
+flows, database exception translation, rollback behavior, and failure-path
+testing. Transaction/session review and the application status transition
+workflow are complete. Individual resource retrieval is implemented and
+tested, and the full suite has 41 passing tests. The broader
+production-backend milestone remains in progress; PostgreSQL integration
+testing is the immediate next backend priority, while logging and other backend
+work remain incomplete.
+
 Status:
 
-**Next**
+**In progress**
 
 ---
 

@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock
 import uuid
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.exceptions import DuplicateCustomerError
+from app.exceptions import DatabaseOperationError, DuplicateCustomerError
 from app.schemas import CustomerCreate
 from app.services.customer_service import CustomerService
 
@@ -51,3 +53,19 @@ def test_create_customer_rejects_duplicate_email(db_session):
             db_session,
             second_customer,
         )
+        
+
+def test_create_customer_rolls_back_on_database_error():
+    db = MagicMock()
+    db.commit.side_effect = SQLAlchemyError("database unavailable")
+
+    customer = CustomerCreate(
+        name="Test User",
+        email="test-error@example.com",
+        phone="9876543210",
+    )
+
+    with pytest.raises(DatabaseOperationError):
+        CustomerService.create_customer(db, customer)
+
+    db.rollback.assert_called_once()        

@@ -111,6 +111,38 @@ The project prioritizes durable engineering concepts over dependence on any sing
 
 ---
 
+## Current Implementation Snapshot
+
+The current working implementation is focused on the backend foundation:
+
+- Customer and loan application creation use service-layer code.
+- Individual customer and loan application retrieval use UUID path parameters.
+- Missing customers and applications return HTTP 404; invalid UUIDs on both
+  retrieval endpoints return HTTP 422.
+- `ApplicationNotFoundError` represents a missing loan application and is
+  centrally translated to HTTP 404.
+- `CustomerService` translates commit-time `IntegrityError` failures to
+  `DuplicateCustomerError`; other commit-time SQLAlchemy errors in both
+  services are translated to `DatabaseOperationError`.
+- Both services roll back after handled commit-time SQLAlchemy failures.
+- Failure-path tests verify rollback and `DatabaseOperationError` for both
+  services.
+- Transaction/session review and commit-time database error handling are
+  complete.
+- API tests cover successful individual retrieval, missing-resource 404, and
+  invalid-UUID 422 behavior.
+- The application status transition workflow is implemented and tested using
+  `ApplicationStatus`, `APPLICATION_STATUS_TRANSITIONS`, and `can_transition()`.
+- The full test suite currently passes: 41 tests.
+
+PostgreSQL integration testing is the immediate next backend priority.
+Production backend work remains incomplete and follows integration testing.
+Document processing, AI integration, RAG, tools, agentic workflows,
+human-in-the-loop, controlled autonomy, evaluation, security/observability,
+and cloud deployment remain planned work.
+
+---
+
 ## 6. Technology Stack
 
 ### Backend
@@ -571,4 +603,3 @@ Human + Autonomous Digital Systems
 
 while maintaining appropriate human oversight for important banking operations.
 ---
-

@@ -92,7 +92,9 @@ Responsible for:
 - API responses
 - Registering centralized application exception handlers
 - Translating `CustomerNotFoundError` into HTTP 404 Not Found
+- Translating `ApplicationNotFoundError` into HTTP 404 Not Found
 - Translating `DuplicateCustomerError` into HTTP 409 Conflict
+- Translating `DatabaseOperationError` into HTTP 500 Internal Server Error
 
 ### Service Layer
 
@@ -100,8 +102,13 @@ Responsible for:
 
 - Customer creation
 - Loan application creation
+- Individual customer and loan application retrieval
+- Application status transitions through `ApplicationStatus`,
+  `APPLICATION_STATUS_TRANSITIONS`, and `can_transition()`
 - Business logic separate from API logic
 - Translating duplicate-customer persistence errors into `DuplicateCustomerError`
+- Rolling back and translating commit-time SQLAlchemy errors into
+  `DatabaseOperationError`
 - Raising `CustomerNotFoundError` when a referenced customer does not exist
 - Remaining independent of HTTP concerns
 
@@ -226,8 +233,11 @@ Current API endpoints:
 GET  /
 POST /customers
 GET  /customers
+GET  /customers/{customer_id}
 POST /applications
 GET  /applications
+GET  /applications/{application_id}
+PATCH /applications/{application_id}/status
 ```
 
 Customer creation follows this flow:
@@ -254,7 +264,10 @@ Application exceptions inherit from `ApplicationError`:
 ```text
 ApplicationError
 ├── DuplicateCustomerError
-└── CustomerNotFoundError
+├── CustomerNotFoundError
+├── ApplicationNotFoundError
+├── InvalidApplicationStatusTransitionError
+└── DatabaseOperationError
 ```
 
 The exception flow is:
@@ -271,8 +284,31 @@ HTTP Response
 
 `LoanApplicationService` raises `CustomerNotFoundError` when the referenced
 customer is missing. The centralized handler maps it to HTTP 404 Not Found;
-`DuplicateCustomerError` maps to HTTP 409 Conflict. Route-level try/except
-handling is not used in `main.py`.
+`DuplicateCustomerError` maps to HTTP 409 Conflict, and
+`DatabaseOperationError` maps to HTTP 500 Internal Server Error. These
+responses use the existing `{"detail": ...}` structure. Route-level
+try/except handling is not used in `main.py`.
+
+`CustomerService` and `LoanApplicationService` retrieve individual resources
+by UUID. Missing customers and applications map to HTTP 404, with
+`ApplicationNotFoundError` used for a missing loan application. FastAPI
+returns HTTP 422 for invalid UUID path parameters. API tests cover successful
+retrieval and these missing-resource and invalid-UUID responses.
+
+`PATCH /applications/{application_id}/status` validates the requested status
+with `ApplicationStatus`, then delegates to `LoanApplicationService`. The
+service checks transitions against `APPLICATION_STATUS_TRANSITIONS` through
+`can_transition()`, persists valid transitions, and raises
+`InvalidApplicationStatusTransitionError` for disallowed transitions; the
+centralized handler maps these to HTTP 400.
+
+For commit-time database failures during customer or loan application
+creation, the services roll back the SQLAlchemy session and raise
+`DatabaseOperationError`. Customer `IntegrityError` failures instead roll
+back and raise `DuplicateCustomerError`. Failure-path tests cover rollback and
+the application-level error for general SQLAlchemy commit failures. The
+transaction/session review is complete. PostgreSQL integration testing is the
+immediate next backend priority and remains incomplete.
 
 The current flow for creating a loan application is:
 
@@ -914,7 +950,10 @@ A new framework or infrastructure component should only be introduced when it so
 | FastAPI | Implemented | Production-ready |
 | PostgreSQL | Implemented | Production-ready |
 | SQLAlchemy | Implemented | Production-ready |
-| Business service layer | Early / next stage | Implemented |
+| Business service layer | Implemented for create flows; broader work remains | Implemented |
+| Service commit-failure handling | Implemented for customer and application creation | Broader database behavior reviewed and tested |
+| Transaction/session review | Complete | Reviewed and tested |
+| Application status transition workflow | Complete | Implemented and tested |
 | Document processing | Not implemented | Implemented |
 | LLM | Not implemented | Implemented |
 | RAG | Not implemented | Implemented |

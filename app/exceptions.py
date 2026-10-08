@@ -8,3 +8,15 @@ class DuplicateCustomerError(ApplicationError):
 
 class CustomerNotFoundError(ApplicationError):
     """Raised when the requested customer does not exist."""
+
+    
+class DatabaseOperationError(ApplicationError):
+    """Raised when a database operation fails."""    
+
+
+class ApplicationNotFoundError(ApplicationError):
+    """Raised when the requested loan application does not exist."""
+
+
+class InvalidApplicationStatusTransitionError(ApplicationError):
+    """Raised when a loan application status transition is not allowed."""

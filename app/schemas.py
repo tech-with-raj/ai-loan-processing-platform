@@ -43,6 +43,10 @@ class LoanApplicationCreate(BaseModel):
     )
 
 
+class LoanApplicationStatusUpdate(BaseModel):
+    status: ApplicationStatus
+
+
 class LoanApplicationResponse(BaseModel):
     application_id: uuid.UUID
     customer_id: uuid.UUID
