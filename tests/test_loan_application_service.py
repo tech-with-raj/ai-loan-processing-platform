@@ -6,8 +6,12 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.enums import ApplicationStatus
-from app.exceptions import CustomerNotFoundError, DatabaseOperationError
-from app.models import Customer
+from app.exceptions import (
+    CustomerNotFoundError,
+    DatabaseOperationError,
+    InvalidApplicationStatusTransitionError,
+)
+from app.models import Customer, LoanApplication
 from app.schemas import LoanApplicationCreate
 from app.services.loan_application_service import LoanApplicationService
 
@@ -88,4 +92,47 @@ def test_create_application_rolls_back_on_database_error():
             application,
         )
 
-    db.rollback.assert_called_once()        
+    db.rollback.assert_called_once()
+
+
+def test_update_application_status_rolls_back_on_database_error():
+    db = MagicMock()
+    application = LoanApplication(
+        application_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        loan_type="Personal Loan",
+        loan_amount=Decimal("50000.00"),
+        status=ApplicationStatus.CREATED,
+    )
+    db.get.return_value = application
+    db.commit.side_effect = SQLAlchemyError("database unavailable")
+
+    with pytest.raises(DatabaseOperationError):
+        LoanApplicationService.update_application_status(
+            db,
+            application.application_id,
+            ApplicationStatus.DOCUMENTS_PENDING,
+        )
+
+    db.rollback.assert_called_once()
+
+
+def test_update_application_status_rejects_invalid_transition_without_commit():
+    db = MagicMock()
+    application = LoanApplication(
+        application_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        loan_type="Personal Loan",
+        loan_amount=Decimal("50000.00"),
+        status=ApplicationStatus.CREATED,
+    )
+    db.get.return_value = application
+
+    with pytest.raises(InvalidApplicationStatusTransitionError):
+        LoanApplicationService.update_application_status(
+            db,
+            application.application_id,
+            ApplicationStatus.APPROVED,
+        )
+
+    db.commit.assert_not_called()

@@ -30,9 +30,8 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 Next backend work:
 
-1. Application status transition workflow
-2. FastAPI + PostgreSQL integration testing
-3. Docker and production backend work
+1. FastAPI + PostgreSQL integration testing
+2. Docker and production backend work
 
 ---
 
@@ -101,6 +100,9 @@ Next backend work:
   and invalid-UUID 422 behavior
 - [x] Test `POST /customers`
 - [x] Test `POST /applications`
+- [x] Test `PATCH /applications/{application_id}/status` for allowed and
+  disallowed transitions, invalid statuses, missing applications, and
+  persisted updates
 - [x] Test invalid requests
 - [x] Test missing resources
 
@@ -145,8 +147,8 @@ The exact API design may evolve as implementation progresses.
 
 - [x] Create loan applications through the service layer
 - [x] Retrieve individual applications
-- [ ] Update application status
-- [ ] Validate application state transitions
+- [x] Update application status
+- [x] Validate application state transitions
 - [ ] Add application filtering
 - [ ] Add pagination where required
 - [ ] Add application tests
@@ -317,7 +319,7 @@ Initial tools may include:
 - [ ] `validate_application`
 - [ ] `retrieve_policy`
 - [ ] `create_validation_issue`
-- [ ] `update_application_status`
+- [x] `update_application_status`
 - [ ] `request_human_review`
 
 For every tool:

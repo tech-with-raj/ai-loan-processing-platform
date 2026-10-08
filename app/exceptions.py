@@ -16,3 +16,7 @@ class DatabaseOperationError(ApplicationError):
 
 class ApplicationNotFoundError(ApplicationError):
     """Raised when the requested loan application does not exist."""
+
+
+class InvalidApplicationStatusTransitionError(ApplicationError):
+    """Raised when a loan application status transition is not allowed."""

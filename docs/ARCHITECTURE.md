@@ -235,6 +235,7 @@ GET  /customers/{customer_id}
 POST /applications
 GET  /applications
 GET  /applications/{application_id}
+PATCH /applications/{application_id}/status
 ```
 
 Customer creation follows this flow:
@@ -263,6 +264,7 @@ ApplicationError
 ├── DuplicateCustomerError
 ├── CustomerNotFoundError
 ├── ApplicationNotFoundError
+├── InvalidApplicationStatusTransitionError
 └── DatabaseOperationError
 ```
 
@@ -290,6 +292,13 @@ by UUID. Missing customers and applications map to HTTP 404, with
 `ApplicationNotFoundError` used for a missing loan application. FastAPI
 returns HTTP 422 for invalid UUID path parameters. API tests cover successful
 retrieval and these missing-resource and invalid-UUID responses.
+
+`PATCH /applications/{application_id}/status` validates the requested status
+with `ApplicationStatus`, then delegates to `LoanApplicationService`. The
+service checks transitions against `APPLICATION_STATUS_TRANSITIONS` through
+`can_transition()`, persists valid transitions, and raises
+`InvalidApplicationStatusTransitionError` for disallowed transitions; the
+centralized handler maps these to HTTP 400.
 
 For commit-time database failures during customer or loan application
 creation, the services roll back the SQLAlchemy session and raise

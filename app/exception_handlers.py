@@ -5,7 +5,8 @@ from app.exceptions import (
     CustomerNotFoundError,
     DatabaseOperationError,
     DuplicateCustomerError,
-    ApplicationNotFoundError
+    ApplicationNotFoundError,
+    InvalidApplicationStatusTransitionError,
 )
 
 
@@ -48,6 +49,16 @@ async def handle_application_not_found(
     )
 
 
+async def handle_invalid_application_status_transition(
+    request: Request,
+    exc: InvalidApplicationStatusTransitionError,
+):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": str(exc)},
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         CustomerNotFoundError,
@@ -64,4 +75,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         ApplicationNotFoundError,
         handle_application_not_found,
+    )
+    app.add_exception_handler(
+        InvalidApplicationStatusTransitionError,
+        handle_invalid_application_status_transition,
     )

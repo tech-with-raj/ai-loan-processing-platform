@@ -140,9 +140,16 @@ GET /customers/{customer_id}
 POST /applications
 GET /applications
 GET /applications/{application_id}
+PATCH /applications/{application_id}/status
 ```
 
 Customer and loan application creation now use the service layer.
+
+Loan application statuses can be updated through
+`PATCH /applications/{application_id}/status`. Valid transitions use the
+shared `APPLICATION_STATUS_TRANSITIONS` definition and `can_transition()`;
+invalid transitions return HTTP 400, missing applications return HTTP 404,
+and unrecognized statuses return HTTP 422.
 
 `CustomerService` and `LoanApplicationService` handle SQLAlchemy errors raised
 by their commit operations. Customer integrity errors are translated to
@@ -626,12 +633,13 @@ The goal is to understand how AI becomes part of a real software system.
 
 ## 17. Current Next Direction
 
-The immediate backend priority is the application status transition workflow.
+The application status transition workflow is implemented. The immediate
+backend priority is PostgreSQL integration testing.
 
 The next work should progressively address:
 
 ```text
-Application status transition workflow
+Application status transition workflow (complete)
         ↓
 PostgreSQL integration testing
         ↓
@@ -685,10 +693,11 @@ Loan application API    : Implemented
 Individual customer retrieval : Implemented; 404 and invalid-UUID 422 tested
 Individual application retrieval : Implemented; 404 and invalid-UUID 422 tested
 ApplicationNotFoundError : Implemented and centrally handled
+Application status transition workflow : Implemented and tested
 Transaction/session review : Completed
 Database commit error handling : Implemented in customer and loan application services
 Rollback on handled commit errors : Implemented and failure-path tested
-Automated tests         : 30 passing
+Automated tests         : 41 passing
 AI integration          : Not started
 RAG                     : Not started
 Tool calling            : Not started
@@ -699,5 +708,5 @@ Observability           : Not started
 Production deployment   : Not started
 
 Current focus:
-Application status transition workflow, followed by PostgreSQL integration testing.
+PostgreSQL integration testing.
 ```

@@ -12,6 +12,7 @@ from app.schemas import (
     CustomerResponse,
     LoanApplicationCreate,
     LoanApplicationResponse,
+    LoanApplicationStatusUpdate,
 )
 from app.services.customer_service import CustomerService
 from app.services.loan_application_service import LoanApplicationService
@@ -121,3 +122,20 @@ def get_application(
     _: None = Depends(require_api_key),
 ):
     return LoanApplicationService.get_application(db, application_id)
+
+
+@app.patch(
+    "/applications/{application_id}/status",
+    response_model=LoanApplicationResponse,
+)
+def update_application_status(
+    application_id: uuid.UUID,
+    status_update: LoanApplicationStatusUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    return LoanApplicationService.update_application_status(
+        db,
+        application_id,
+        status_update.status,
+    )
