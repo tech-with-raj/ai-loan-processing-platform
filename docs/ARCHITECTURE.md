@@ -103,6 +103,8 @@ Responsible for:
 - Customer creation
 - Loan application creation
 - Individual customer and loan application retrieval
+- Application status transitions through `ApplicationStatus`,
+  `APPLICATION_STATUS_TRANSITIONS`, and `can_transition()`
 - Business logic separate from API logic
 - Translating duplicate-customer persistence errors into `DuplicateCustomerError`
 - Rolling back and translating commit-time SQLAlchemy errors into
@@ -305,8 +307,8 @@ creation, the services roll back the SQLAlchemy session and raise
 `DatabaseOperationError`. Customer `IntegrityError` failures instead roll
 back and raise `DuplicateCustomerError`. Failure-path tests cover rollback and
 the application-level error for general SQLAlchemy commit failures. The
-transaction/session review is complete; PostgreSQL integration testing remains
-incomplete.
+transaction/session review is complete. PostgreSQL integration testing is the
+immediate next backend priority and remains incomplete.
 
 The current flow for creating a loan application is:
 
@@ -950,7 +952,8 @@ A new framework or infrastructure component should only be introduced when it so
 | SQLAlchemy | Implemented | Production-ready |
 | Business service layer | Implemented for create flows; broader work remains | Implemented |
 | Service commit-failure handling | Implemented for customer and application creation | Broader database behavior reviewed and tested |
-| Transaction/session review | Not complete | Reviewed and tested |
+| Transaction/session review | Complete | Reviewed and tested |
+| Application status transition workflow | Complete | Implemented and tested |
 | Document processing | Not implemented | Implemented |
 | LLM | Not implemented | Implemented |
 | RAG | Not implemented | Implemented |

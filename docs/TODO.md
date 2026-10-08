@@ -14,7 +14,9 @@ Tasks should be updated as the project progresses.
 
 # 1. Current Priority
 
-The immediate goal is:
+The immediate backend priority is PostgreSQL integration testing.
+
+The broader project direction is:
 
 ```text id="y4p4b1"
 Strengthen Backend Foundation
@@ -151,7 +153,7 @@ The exact API design may evolve as implementation progresses.
 - [x] Validate application state transitions
 - [ ] Add application filtering
 - [ ] Add pagination where required
-- [ ] Add application tests
+- [x] Add application tests
 
 Potential lifecycle:
 
@@ -609,10 +611,10 @@ Priority order:
 - [ ] Commit
 - [ ] Push
 
-Transaction/session review, commit-time database error handling, and
-individual retrieval endpoints are complete. Application status transition
-workflow is the next backend priority. PostgreSQL integration testing and
-Docker/production backend work remain incomplete.
+Transaction/session review, commit-time database error handling, individual
+retrieval endpoints, and the application status transition workflow are
+complete. PostgreSQL integration testing is the immediate next backend task;
+Docker/production backend work follows it and remains incomplete.
 
 Do not start RAG or agent frameworks yet.
 

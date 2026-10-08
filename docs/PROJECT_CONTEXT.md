@@ -131,10 +131,12 @@ The current working implementation is focused on the backend foundation:
   complete.
 - API tests cover successful individual retrieval, missing-resource 404, and
   invalid-UUID 422 behavior.
-- The full test suite currently passes: 30 tests.
+- The application status transition workflow is implemented and tested using
+  `ApplicationStatus`, `APPLICATION_STATUS_TRANSITIONS`, and `can_transition()`.
+- The full test suite currently passes: 41 tests.
 
-The application status transition workflow is the next backend priority.
-PostgreSQL integration testing and production backend work remain incomplete.
+PostgreSQL integration testing is the immediate next backend priority.
+Production backend work remains incomplete and follows integration testing.
 Document processing, AI integration, RAG, tools, agentic workflows,
 human-in-the-loop, controlled autonomy, evaluation, security/observability,
 and cloud deployment remain planned work.

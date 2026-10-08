@@ -87,11 +87,12 @@ Implemented foundation:
 - Transaction/session review
 - API tests for successful individual retrieval, missing-resource 404, and
   invalid-UUID 422 behavior
-- 30 passing service and API tests
+- 41 passing service and API tests
 - Git/GitHub project management
 - Persistent project documentation
 
-The next backend priority is the application status transition workflow.
+The application status transition workflow is complete. PostgreSQL integration
+testing is the immediate next backend priority.
 
 AI and agentic capabilities are not yet implemented.
 
@@ -178,13 +179,13 @@ The database can persist loan application information.
 
 - Improve project structure
 - Extend validation and error handling for additional cases
-- Implement the application status transition workflow
 - Expand test coverage for broader database behavior
 - Establish consistent API behavior
 
 Transaction/session review and service-level handling of commit-time
-SQLAlchemy errors are complete. PostgreSQL integration testing remains
-incomplete.
+SQLAlchemy errors are complete, as is the application status transition
+workflow. PostgreSQL integration testing is the next backend milestone and
+remains incomplete.
 
 ## Completion criteria
 
@@ -1124,6 +1125,8 @@ The immediate priority is:
 
 ```text
 Strengthen Backend Foundation
+        ↓
+PostgreSQL Integration Testing
         ↓
 Production Backend Patterns
         ↓

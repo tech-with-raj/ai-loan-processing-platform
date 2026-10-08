@@ -1104,11 +1104,12 @@ Target learning:
 
 Covered so far: service-layer transaction handling for the current create
 flows, database exception translation, rollback behavior, and failure-path
-testing. Transaction/session review is complete. Individual resource
-retrieval is implemented and tested, with 30 tests currently passing. The
-broader production-backend milestone remains in progress; PostgreSQL
-integration testing, logging, and other backend work are not complete. The
-application status transition workflow is the next backend priority.
+testing. Transaction/session review and the application status transition
+workflow are complete. Individual resource retrieval is implemented and
+tested, and the full suite has 41 passing tests. The broader
+production-backend milestone remains in progress; PostgreSQL integration
+testing is the immediate next backend priority, while logging and other backend
+work remain incomplete.
 
 Status:
 

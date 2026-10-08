@@ -498,7 +498,7 @@ This is a future target, not the current implementation.
 
 ## 13. Current Testing Status
 
-The repository contains 30 passing tests across service and API tests:
+The repository contains 41 passing tests across service and API tests:
 
 ```text
 tests/
@@ -519,6 +519,8 @@ Current tests cover:
 - Successful individual customer and loan application retrieval
 - Missing individual customers and loan applications returning HTTP 404
 - Invalid UUIDs for both individual retrieval endpoints returning HTTP 422
+- Allowed and disallowed application status transitions, invalid statuses,
+  missing applications, and persisted status updates
 - Duplicate customer email returning HTTP 409
 - Invalid customer email and invalid loan request validation
 - Existing API behavior, including listing and pagination
