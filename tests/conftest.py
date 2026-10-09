@@ -13,8 +13,6 @@ def db_session():
 
     try:
         yield session
-    except OperationalError:
-        pytest.skip("PostgreSQL is required; start it with docker compose up -d postgres")
     finally:
         session.close()
         transaction.rollback()
