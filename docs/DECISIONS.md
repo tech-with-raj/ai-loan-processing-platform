@@ -1019,6 +1019,7 @@ Accepted.
 | AI evaluation | Required |
 | Observability | Required |
 | Security | System-wide requirement |
+| Local container runtime | Docker Compose for FastAPI and PostgreSQL |
 | Documentation | GitHub repository source of truth |
 
 ---
@@ -1079,6 +1080,37 @@ Push
 The goal is not to avoid changing architecture.
 
 The goal is to make architectural changes **deliberate, explainable, and traceable**.
+
+---
+
+# 28. Docker Compose for Local API and Database
+
+## Decision
+
+Use Docker Compose to run the FastAPI API and PostgreSQL together for local
+containerized development. The API connects to the PostgreSQL Compose service
+by its service hostname. Persist database files in a named volume and manage
+the application schema through explicit Alembic migrations.
+
+## Why
+
+This provides a repeatable local runtime for both backend services and allows
+the API/database integration to be manually verified without introducing a
+separate deployment platform.
+
+## Trade-offs
+
+- Developers need Docker Desktop and Docker Compose for the containerized
+  workflow.
+- Application tables are not created merely by starting PostgreSQL; Alembic
+  migrations must be applied explicitly.
+- The Compose stack is for local development and does not provide production
+  secrets management, cloud deployment, or production readiness.
+
+## Status
+
+Accepted. The local containerized API/database runtime was manually verified.
+Automated regression testing after Dockerization remains pending.
 
 ---
 

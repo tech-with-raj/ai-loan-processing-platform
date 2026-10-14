@@ -2,21 +2,24 @@
 
 ## Last Updated
 
-2026-10-07
+2026-10-14
 
 ---
 
 ## 1. Current Phase
 
-**Phase:** Backend Foundation / Database Integration
+**Phase:** Backend Foundation / Database Integration / Local Containerization
 
 The project is currently in the foundational software engineering stage.
 
-The current implementation focuses on:
+The current application architecture is:
 
 ```text
 FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
+
+For local containerized development, Docker Compose runs the FastAPI API and
+PostgreSQL together. Regression testing after Dockerization remains pending.
 
 AI and agentic capabilities have not yet been integrated into the application.
 
@@ -30,6 +33,10 @@ Foundation
 Backend
     ↓
 Database
+    ↓
+Local Containerization
+    ↓
+Backend Reliability and Production Hardening
     ↓
 AI
     ↓
@@ -56,11 +63,14 @@ Foundation
 Backend
     ↓
 Database
+    ↓
+Local Containerization
     ↑
 CURRENT STAGE
 ```
 
-The next major objective is to continue strengthening the backend foundation before introducing AI capabilities.
+The next objective is Dockerized regression and PostgreSQL integration testing,
+followed by backend reliability and production hardening before introducing AI.
 
 ---
 
@@ -112,6 +122,9 @@ ai-loan-processing-platform/
 │   └── test_main.py
 │
 ├── .gitignore
+├── .dockerignore
+├── Dockerfile
+├── docker-compose.yml
 ├── README.md
 └── requirements.txt
 ```
@@ -159,7 +172,29 @@ caught commit error occurs. Failure-path unit tests verify that rollback is
 called and `DatabaseOperationError` is raised.
 
 The transaction/session review and commit-time database error handling are
-complete. PostgreSQL integration testing remains incomplete.
+complete. PostgreSQL integration testing remains incomplete, including
+regression testing after Dockerization.
+
+### Dockerized Local Runtime
+
+Dockerization is implemented and was manually verified on the
+`feature/dockerize-backend` branch. The API image built, both Compose services
+started, PostgreSQL reported healthy, and manual checks confirmed the API root,
+Swagger UI, and customer creation/retrieval against the containerized database.
+This manual verification does not establish that the automated test suite
+passes after Dockerization.
+
+| Component | Current runtime |
+|---|---|
+| API | FastAPI/Uvicorn in the `api` container; host port `8000` |
+| Database | PostgreSQL 16 in the `postgres` container; host port `5432` |
+| API database connection | Uses the Compose service hostname `postgres` and database port `5432` |
+| Startup dependency | API waits for the PostgreSQL health check |
+| Persistent database data | Named Compose volume `postgres_data` |
+
+Alembic migrations must be applied explicitly inside the API container with
+`docker compose exec api python -m alembic upgrade head`. Starting PostgreSQL
+alone does not create the application tables.
 
 ---
 
@@ -428,6 +463,10 @@ FastAPI Dependency
 
 The application raises an error if `DATABASE_URL` is not configured.
 
+In the Compose runtime, the API connects to PostgreSQL using service hostname
+`postgres` on port `5432`. When running the API directly on the host, the
+database URL must target PostgreSQL on `localhost`.
+
 ---
 
 ## 10. CORS Status
@@ -498,7 +537,8 @@ This is a future target, not the current implementation.
 
 ## 13. Current Testing Status
 
-The repository contains 41 passing tests across service and API tests:
+The last recorded test run before Dockerization contained 41 passing tests
+across service and API tests:
 
 ```text
 tests/
@@ -525,11 +565,12 @@ Current tests cover:
 - Invalid customer email and invalid loan request validation
 - Existing API behavior, including listing and pagination
 
-Transaction/session review and commit-time database error handling are
-complete. PostgreSQL integration tests and future AI workflow coverage remain
-to be added as those capabilities are developed.
+The 41-test result predates Dockerization. The suite has not yet been rerun
+after Dockerization, so its current result is unverified. PostgreSQL
+integration tests and future AI workflow coverage remain to be added.
 
-Backend CI is passing after PR #2 was merged into `main`.
+Backend CI was recorded as passing after PR #2 was merged into `main`; CI for
+the current Dockerization branch has not been verified here.
 
 
 ---
@@ -553,7 +594,7 @@ Secrets management
 Production migration workflow
 Broader automated test coverage
 CI/CD
-Docker
+Containerized production deployment
 Observability
 Monitoring
 AI evaluation
@@ -635,17 +676,18 @@ The goal is to understand how AI becomes part of a real software system.
 
 ## 17. Current Next Direction
 
-The application status transition workflow is implemented. The immediate
-backend priority is PostgreSQL integration testing.
+The application status transition workflow and local Docker Compose runtime
+are implemented. The immediate backend priorities are regression testing after
+Dockerization and PostgreSQL integration testing.
 
 The next work should progressively address:
 
 ```text
 Application status transition workflow (complete)
         ↓
-PostgreSQL integration testing
+Dockerized regression testing + PostgreSQL integration testing
         ↓
-Docker and production backend work
+Backend reliability and production hardening
         ↓
 Authentication / authorization
         ↓
@@ -699,7 +741,9 @@ Application status transition workflow : Implemented and tested
 Transaction/session review : Completed
 Database commit error handling : Implemented in customer and loan application services
 Rollback on handled commit errors : Implemented and failure-path tested
-Automated tests         : 41 passing
+Automated tests         : 41 passed before Dockerization; post-Docker run pending
+Dockerized local runtime : Implemented and manually verified
+Alembic migrations       : Required explicitly for containerized database schema
 AI integration          : Not started
 RAG                     : Not started
 Tool calling            : Not started
@@ -710,5 +754,5 @@ Observability           : Not started
 Production deployment   : Not started
 
 Current focus:
-PostgreSQL integration testing.
+Dockerized regression testing and PostgreSQL integration testing.
 ```

@@ -14,7 +14,8 @@ Tasks should be updated as the project progresses.
 
 # 1. Current Priority
 
-The immediate backend priority is PostgreSQL integration testing.
+The immediate backend priorities are regression testing after Dockerization
+and PostgreSQL integration testing.
 
 The broader project direction is:
 
@@ -32,8 +33,9 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 Next backend work:
 
-1. FastAPI + PostgreSQL integration testing
-2. Docker and production backend work
+1. Re-run regression tests after Dockerization
+2. FastAPI + PostgreSQL integration testing
+3. Backend reliability and production hardening
 
 ---
 
@@ -111,6 +113,7 @@ Next backend work:
 ## Integration Testing
 
 - [ ] Test FastAPI + PostgreSQL integration
+- [ ] Run the regression suite after Dockerization and record the result
 - [ ] Test transaction behavior
 - [ ] Test relational constraints
 - [ ] Test complete loan application creation flow
@@ -507,15 +510,22 @@ Execute / Escalate
 
 ---
 
-# 18. Docker
+# 18. Docker and Local Containerization
 
-- [ ] Create Dockerfile
-- [ ] Containerize FastAPI application
-- [ ] Create Docker Compose configuration
-- [ ] Containerize PostgreSQL for local development where appropriate
-- [ ] Configure environment variables
-- [ ] Add health checks
-- [ ] Test local container deployment
+- [x] Create Dockerfile for the FastAPI application
+- [x] Containerize the FastAPI application
+- [x] Create Docker Compose configuration for the API and PostgreSQL
+- [x] Connect the API to PostgreSQL through the Compose service hostname
+- [x] Add a PostgreSQL health check and wait for it before starting the API
+- [x] Persist PostgreSQL data in a named Compose volume
+- [x] Build and manually verify the local container deployment, API endpoints,
+  and customer persistence
+- [x] Add `.dockerignore`
+- [ ] Run regression tests after Dockerization
+- [ ] Review `.dockerignore` coverage and investigate the approximately
+  187.66 MB build context for appropriate optimization
+- [ ] Review runtime configuration and secrets management before any
+  non-local deployment
 
 ---
 
@@ -606,15 +616,16 @@ Priority order:
 - [ ] Improve validation
 - [ ] Complete remaining error-handling review
 - [ ] Add meaningful tests
-- [ ] Verify database behavior
+- [ ] Verify database behavior, including Dockerized regression and PostgreSQL
+  integration tests
 - [ ] Update documentation
 - [ ] Commit
 - [ ] Push
 
 Transaction/session review, commit-time database error handling, individual
-retrieval endpoints, and the application status transition workflow are
-complete. PostgreSQL integration testing is the immediate next backend task;
-Docker/production backend work follows it and remains incomplete.
+retrieval endpoints, the application status transition workflow, and local
+Docker Compose setup are complete. Automated regression testing after
+Dockerization and PostgreSQL integration testing remain incomplete.
 
 Do not start RAG or agent frameworks yet.
 
@@ -639,7 +650,7 @@ These items are intentionally not immediate priorities.
 - [ ] AI evaluation
 - [ ] Security hardening
 - [ ] Observability
-- [ ] Docker
+- [ ] Production container deployment
 - [ ] CI/CD
 - [ ] AWS deployment
 

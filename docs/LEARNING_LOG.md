@@ -1044,19 +1044,30 @@ Future phase.
 
 ---
 
-# 28. Docker, Cloud and CI/CD — Future Learning
+# 28. Docker, Cloud and CI/CD
 
-Topics:
+Local containerization concepts learned and applied:
 
-- Docker
-- Docker Compose
-- Containers
-- Networking
-- Environment configuration
+- Docker images package application code and dependencies; containers run
+  those images as isolated processes.
+- A Dockerfile defines how the API image is built, while Docker Compose
+  describes and starts the API and PostgreSQL services together.
+- Compose services communicate over the Compose network by service hostname;
+  the API uses `postgres:5432` rather than `localhost` to reach the database.
+- PostgreSQL health checks and a named volume provide startup coordination
+  and persistence across ordinary container stops and recreations.
+- Alembic migrations can be run inside the API container to create and update
+  the application schema.
+- A running database container does not imply that application tables exist;
+  missing-table errors require checking and applying the migrations.
+- API root and Swagger responses, plus customer creation and retrieval, were
+  manually checked against the PostgreSQL container.
+
+Still future learning and implementation:
+
 - CI/CD
 - Cloud deployment
-- Health checks
-- Production configuration
+- Production configuration and secrets management
 
 Preferred cloud direction:
 
@@ -1064,7 +1075,9 @@ Preferred cloud direction:
 
 ## Status
 
-Future phase.
+Local API/PostgreSQL containerization is implemented and manually verified.
+Cloud deployment, CI/CD, and production configuration remain future work;
+automated regression testing after Dockerization is pending.
 
 ---
 
@@ -1106,10 +1119,11 @@ Covered so far: service-layer transaction handling for the current create
 flows, database exception translation, rollback behavior, and failure-path
 testing. Transaction/session review and the application status transition
 workflow are complete. Individual resource retrieval is implemented and
-tested, and the full suite has 41 passing tests. The broader
-production-backend milestone remains in progress; PostgreSQL integration
-testing is the immediate next backend priority, while logging and other backend
-work remain incomplete.
+tested. The last recorded full test run had 41 passing tests before
+Dockerization; a post-Docker test run is pending. Docker Compose local
+containerization has been manually verified. The broader production-backend
+milestone remains in progress; regression and PostgreSQL integration testing,
+logging, and other backend work remain incomplete.
 
 Status:
 
