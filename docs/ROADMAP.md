@@ -55,7 +55,7 @@ The project is primarily designed to develop the capabilities required for:
 Current stage:
 
 ```text
-Backend Foundation + Database Integration
+Backend Foundation + Database Integration + Local Containerization
 ```
 
 Current architecture:
@@ -63,6 +63,11 @@ Current architecture:
 ```text
 FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
+
+Local development can run the API and PostgreSQL together with Docker Compose.
+That containerized runtime has been manually verified; automated regression
+testing after Dockerization remains pending. Backend reliability and production
+hardening remain ahead of AI implementation.
 
 Implemented foundation:
 
@@ -87,12 +92,15 @@ Implemented foundation:
 - Transaction/session review
 - API tests for successful individual retrieval, missing-resource 404, and
   invalid-UUID 422 behavior
-- 41 passing service and API tests
+- 41 service and API tests passed before Dockerization; a post-Docker run is
+  pending
+- Dockerfile and Docker Compose runtime for FastAPI and PostgreSQL, manually
+  verified
 - Git/GitHub project management
 - Persistent project documentation
 
-The application status transition workflow is complete. PostgreSQL integration
-testing is the immediate next backend priority.
+The application status transition workflow is complete. Dockerized regression
+testing and PostgreSQL integration testing are the immediate backend priorities.
 
 AI and agentic capabilities are not yet implemented.
 
@@ -107,7 +115,7 @@ Phase 1
 Backend Foundation
         ↓
 Phase 2
-Production Backend
+Production Backend + Local Containerization
         ↓
 Phase 3
 Document Processing
@@ -140,7 +148,7 @@ Phase 12
 Security & Observability
         ↓
 Phase 13
-Docker & Cloud
+Cloud Deployment
         ↓
 Phase 14
 Production AI System
@@ -223,6 +231,8 @@ Transform the basic backend into a more production-oriented service.
 - Filtering
 - API versioning where appropriate
 - Automated tests
+- Docker Compose local runtime for FastAPI and PostgreSQL (implemented and
+  manually verified; regression testing remains pending)
 
 Service-level commit-failure handling now rolls back and raises an
 application-level database exception for the customer and loan application
@@ -818,34 +828,24 @@ Developers can understand what happened inside the system when something goes wr
 
 ---
 
-# Phase 13 — Docker & Cloud
+# Phase 13 — Cloud Deployment
 
 ## Objective
 
-Make BestBank deployable as a real application.
+Deploy BestBank outside the local development environment when justified.
 
 ## Build
 
-```text
-FastAPI
-PostgreSQL
-AI Services
-Document Storage
-Frontend
-```
-
-using containerized infrastructure where appropriate.
+Cloud deployment of the API and database, with additional services introduced
+only when required. The local Docker Compose runtime is implemented; it does
+not establish cloud deployment or production readiness.
 
 ## Learn
 
-- Docker
-- Docker Compose
-- Container networking
 - Environment configuration
 - CI/CD
 - Cloud deployment
 - Infrastructure concepts
-- Health checks
 - Production configuration
 
 ## Cloud direction

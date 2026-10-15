@@ -44,20 +44,32 @@ Each layer should be introduced when there is a clear requirement for it.
 
 # 3. Current Architecture
 
-The current implementation is centered around:
+The current application architecture is centered around:
 
 ```text
 FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
 
-The current backend contains:
+For local containerized development, Docker Compose runs the API and database
+as separate services:
 
 ```text
-FastAPI
-Pydantic
-SQLAlchemy
-PostgreSQL
+Client
+  |
+  | http://localhost:8000
+  v
+FastAPI (api container)
+  |
+  | Compose network: postgres:5432
+  v
+PostgreSQL (postgres container)
+  |
+  v
+Named volume: postgres_data
 ```
+
+The current runtime has a Docker Compose-managed FastAPI API container and a
+PostgreSQL 16 container.
 
 ---
 
@@ -67,19 +79,69 @@ PostgreSQL
                     Client
                       |
                       v
-                FastAPI API
+               Host port 8000
                       |
                       v
-                    Service Layer
+               FastAPI API container
                       |
                       v
-                  SQLAlchemy
-          |
-          v
-      PostgreSQL
+                 Service Layer
+                      |
+                      v
+                   SQLAlchemy
+                      |
+         Compose network (`postgres:5432`)
+                      |
+                      v
+              PostgreSQL container
+                      |
+                      v
+             `postgres_data` volume
 ```
 
 Responsibilities are currently separated as follows.
+
+### Dockerfile
+
+Builds the API image from `python:3.13-slim`, installs dependencies from
+`requirements.txt`, copies the application into the image, and starts Uvicorn
+on port `8000`.
+
+### FastAPI Container
+
+Runs the API in the `api` Compose service and publishes container port `8000`
+on host port `8000`. It receives its database configuration from the Compose
+service environment.
+
+### PostgreSQL Container
+
+Runs PostgreSQL 16 in the `postgres` service and publishes port `5432` for
+host access. A health check uses `pg_isready`; the API waits for this health
+check before starting.
+
+### Docker Compose Network
+
+Compose provides service-to-service networking. The API connects to the
+database using the service hostname `postgres` and PostgreSQL port `5432`;
+container-to-container traffic does not use `localhost`.
+
+### PostgreSQL Named Volume
+
+The `postgres_data` named volume is mounted at PostgreSQL's data directory so
+database files persist when containers are stopped and recreated. The normal
+`docker compose down` command does not remove this volume.
+
+### Alembic Migrations
+
+Alembic owns application schema creation and changes. Migrations are applied
+explicitly inside the API container with:
+
+```powershell
+docker compose exec api python -m alembic upgrade head
+```
+
+Starting PostgreSQL does not create application tables. Apply migrations
+before using endpoints that require those tables.
 
 ### FastAPI
 
@@ -307,8 +369,8 @@ creation, the services roll back the SQLAlchemy session and raise
 `DatabaseOperationError`. Customer `IntegrityError` failures instead roll
 back and raise `DuplicateCustomerError`. Failure-path tests cover rollback and
 the application-level error for general SQLAlchemy commit failures. The
-transaction/session review is complete. PostgreSQL integration testing is the
-immediate next backend priority and remains incomplete.
+transaction/session review is complete. PostgreSQL integration testing and
+automated regression testing after Dockerization remain incomplete.
 
 The current flow for creating a loan application is:
 
@@ -964,7 +1026,7 @@ A new framework or infrastructure component should only be introduced when it so
 | Guardrails | Not implemented | Implemented |
 | AI evaluation | Not implemented | Implemented |
 | Observability | Not implemented | Implemented |
-| Docker | Planned | Implemented |
+| Local Docker Compose | Implemented; manually verified | Production deployment |
 | CI/CD | Planned | Implemented |
 | Cloud deployment | Planned | Implemented |
 

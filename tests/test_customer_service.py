@@ -33,11 +33,7 @@ def test_create_customer_rejects_duplicate_email(db_session):
         email=email,
         phone="9876543210",
     )
-
-    CustomerService.create_customer(
-        db_session,
-        first_customer,
-    )
+    CustomerService.create_customer(db_session, first_customer)
 
     second_customer = CustomerCreate(
         name="Second Customer",
@@ -53,6 +49,21 @@ def test_create_customer_rejects_duplicate_email(db_session):
             db_session,
             second_customer,
         )
+
+    # The service should roll back the failed insert so this session still works.
+    customer_after_rollback = CustomerCreate(
+        name="Customer After Rollback",
+        email=f"{uuid.uuid4()}@example.com",
+        phone="9876543212",
+    )
+
+    result = CustomerService.create_customer(
+        db_session,
+        customer_after_rollback,
+    )
+
+    assert result.customer_id is not None
+    assert result.email == customer_after_rollback.email
         
 
 def test_create_customer_rolls_back_on_database_error():

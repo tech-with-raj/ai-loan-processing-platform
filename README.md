@@ -171,9 +171,65 @@ The project prioritizes durable engineering concepts over dependence on any sing
 - CI/CD
 - AWS
 
-## How to Run Locally
+## Run with Docker Compose
 
-### Backend and PostgreSQL
+### Prerequisites
+
+- Docker Desktop with Docker Compose available as `docker compose`
+
+### Start the API and PostgreSQL
+
+From the repository root, build the API image and start both services:
+
+```powershell
+docker compose up --build -d
+```
+
+Check the service and health status:
+
+```powershell
+docker compose ps
+```
+
+View API container logs:
+
+```powershell
+docker compose logs api
+```
+
+Starting the database container does not create the BestBank application
+tables. Apply the schema migrations from inside the API container:
+
+```powershell
+docker compose exec api python -m alembic upgrade head
+```
+
+The API is available at `http://localhost:8000/`, and Swagger UI is at
+`http://localhost:8000/docs`. PostgreSQL is published on port `5432`.
+
+The Compose configuration stores database data in the named `postgres_data`
+volume. The normal stop command preserves that data:
+
+```powershell
+docker compose down
+```
+
+Starting the stack again reuses the named volume. Do not add the `-v` option
+when stopping the stack if you want to preserve PostgreSQL data.
+
+If an API request reports a missing table, apply or re-apply the Alembic
+migrations using the command above, then retry the request.
+
+## Run locally for development
+
+This is a separate workflow: the FastAPI process runs on the host, while
+PostgreSQL runs in its Compose container. It is useful for local code reload
+and debugging without rebuilding the API image for each change.
+
+### Prerequisites
+
+- Python and pip
+- Docker Desktop with Docker Compose
 
 1. Create and activate a virtual environment, then install dependencies:
 
@@ -183,22 +239,25 @@ The project prioritizes durable engineering concepts over dependence on any sing
    pip install -r requirements.txt
    ```
 
-2. Copy `.env.example` to `.env`. Start PostgreSQL and apply migrations:
+2. Copy `.env.example` to `.env` and configure the local database connection
+   for PostgreSQL on `localhost:5432`. Start PostgreSQL and apply migrations
+   from the host environment:
 
    ```powershell
    docker compose up -d postgres
    python -m alembic upgrade head
    ```
 
-3. Start the API:
+3. Start the API on the host:
 
    ```powershell
    uvicorn app.main:app --reload
    ```
 
-The API is available at `http://localhost:8000`, with interactive docs at
-`http://localhost:8000/docs`. Set `API_KEY` in `.env` before exposing the API
-outside localhost; when set, send it as the `X-API-Key` header.
+The API is available at `http://localhost:8000/`, with interactive docs at
+`http://localhost:8000/docs`. If `API_KEY` is set in the local `.env`, include
+it in the `X-API-Key` request header. Do not expose this local development
+server outside localhost without appropriate security controls.
 
 ### Frontend
 

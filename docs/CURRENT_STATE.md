@@ -2,21 +2,26 @@
 
 ## Last Updated
 
-2026-10-07
+2026-10-15
 
 ---
 
 ## 1. Current Phase
 
-**Phase:** Backend Foundation / Database Integration
+**Phase:** Backend Foundation / Database Integration / Local Containerization
 
 The project is currently in the foundational software engineering stage.
 
-The current implementation focuses on:
+The current application architecture is:
 
 ```text
 FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
+
+For local containerized development, Docker Compose runs the FastAPI API and
+PostgreSQL together. The Dockerized 42-test regression run has passed, including
+PostgreSQL duplicate-email rollback recovery for that failure path; broader
+PostgreSQL transaction and relational-constraint coverage remains open.
 
 AI and agentic capabilities have not yet been integrated into the application.
 
@@ -30,6 +35,10 @@ Foundation
 Backend
     ↓
 Database
+    ↓
+Local Containerization
+    ↓
+Backend Reliability and Production Hardening
     ↓
 AI
     ↓
@@ -56,11 +65,16 @@ Foundation
 Backend
     ↓
 Database
+    ↓
+Local Containerization
     ↑
 CURRENT STAGE
 ```
 
-The next major objective is to continue strengthening the backend foundation before introducing AI capabilities.
+The Dockerized regression run and initial PostgreSQL integration coverage are
+complete. The next objective is broader PostgreSQL transaction and
+relational-constraint testing, followed by backend reliability and production
+hardening before introducing AI.
 
 ---
 
@@ -112,6 +126,9 @@ ai-loan-processing-platform/
 │   └── test_main.py
 │
 ├── .gitignore
+├── .dockerignore
+├── Dockerfile
+├── docker-compose.yml
 ├── README.md
 └── requirements.txt
 ```
@@ -159,7 +176,38 @@ caught commit error occurs. Failure-path unit tests verify that rollback is
 called and `DatabaseOperationError` is raised.
 
 The transaction/session review and commit-time database error handling are
-complete. PostgreSQL integration testing remains incomplete.
+complete. The Dockerized regression run and initial PostgreSQL integration
+coverage are complete. A PostgreSQL foreign-key rejection test directly inserts
+a loan application with a nonexistent customer ID, expects `IntegrityError`,
+rolls back, and verifies the application was not persisted. This verifies
+rollback and non-persistence for that failed insert only; broader PostgreSQL
+transaction behavior and other relational-constraint testing remain open.
+The duplicate-email test also verifies that PostgreSQL rejects a duplicate,
+`CustomerService` rolls back the failed transaction, and the same SQLAlchemy
+session then successfully creates a customer with a different email. This
+proves recovery from the duplicate-email failure path only, not recovery from
+every possible database failure. Service commit-failure rollback checks use
+mocks and do not establish broader PostgreSQL transaction behavior.
+
+### Dockerized Local Runtime
+
+Dockerization is implemented and was manually verified on the
+`feature/dockerize-backend` branch. The API image built, both Compose services
+started, PostgreSQL reported healthy, and manual checks confirmed the API root,
+Swagger UI, and customer creation/retrieval against the containerized database.
+Automated Dockerized regression testing is now recorded in Section 13.
+
+| Component | Current runtime |
+|---|---|
+| API | FastAPI/Uvicorn in the `api` container; host port `8000` |
+| Database | PostgreSQL 16 in the `postgres` container; host port `5432` |
+| API database connection | Uses the Compose service hostname `postgres` and database port `5432` |
+| Startup dependency | API waits for the PostgreSQL health check |
+| Persistent database data | Named Compose volume `postgres_data` |
+
+Alembic migrations must be applied explicitly inside the API container with
+`docker compose exec api python -m alembic upgrade head`. Starting PostgreSQL
+alone does not create the application tables.
 
 ---
 
@@ -428,6 +476,10 @@ FastAPI Dependency
 
 The application raises an error if `DATABASE_URL` is not configured.
 
+In the Compose runtime, the API connects to PostgreSQL using service hostname
+`postgres` on port `5432`. When running the API directly on the host, the
+database URL must target PostgreSQL on `localhost`.
+
 ---
 
 ## 10. CORS Status
@@ -498,7 +550,8 @@ This is a future target, not the current implementation.
 
 ## 13. Current Testing Status
 
-The repository contains 41 passing tests across service and API tests:
+The Dockerized regression run collected and passed all 42 tests across
+service and API tests:
 
 ```text
 tests/
@@ -511,6 +564,8 @@ tests/
 Current tests cover:
 
 - Customer creation and duplicate email errors at service level
+- PostgreSQL duplicate-email rejection, rollback, and same-session recovery by
+  successfully creating a customer with a different email
 - Customer service commit failure handling, rollback, and
   `DatabaseOperationError`
 - Loan application creation and missing-customer validation
@@ -525,11 +580,33 @@ Current tests cover:
 - Invalid customer email and invalid loan request validation
 - Existing API behavior, including listing and pagination
 
-Transaction/session review and commit-time database error handling are
-complete. PostgreSQL integration tests and future AI workflow coverage remain
-to be added as those capabilities are developed.
+The run applied migrations and tested against the PostgreSQL service in Docker
+Compose:
 
-Backend CI is passing after PR #2 was merged into `main`.
+```text
+docker compose run --build --rm api python -m alembic upgrade head
+Successfully completed
+
+docker compose run --rm api pytest -v
+42 passed; one Starlette/httpx deprecation warning; no test failures
+```
+
+After rebuilding the API image to include the new test, the successful run used
+temporary Compose API containers and the PostgreSQL service. The host-side test
+run was not used because Windows PostgreSQL was listening on port 5432. Tests
+exercise API/service integration, customer-email uniqueness and rollback
+recovery, and the customer-to-loan-application creation flow against
+PostgreSQL. When PostgreSQL rejects a duplicate email, `CustomerService` rolls
+back the failed transaction and the same SQLAlchemy session successfully
+creates a customer with a different email. This verifies recovery from the
+duplicate-email failure path only, not every possible database failure. The
+direct foreign-key rejection test inserts a loan application with a nonexistent
+customer ID, expects PostgreSQL to raise `IntegrityError`, rolls back, and
+verifies the application was not persisted; this covers that failed insert
+only. Broader PostgreSQL transaction behavior and other relational-constraint
+coverage remain open. Future AI workflow coverage remains to be added.
+
+GitHub Actions was not run or verified as part of this local test run.
 
 
 ---
@@ -553,7 +630,7 @@ Secrets management
 Production migration workflow
 Broader automated test coverage
 CI/CD
-Docker
+Containerized production deployment
 Observability
 Monitoring
 AI evaluation
@@ -635,17 +712,24 @@ The goal is to understand how AI becomes part of a real software system.
 
 ## 17. Current Next Direction
 
-The application status transition workflow is implemented. The immediate
-backend priority is PostgreSQL integration testing.
+The application status transition workflow and local Docker Compose runtime
+are implemented. The Dockerized 42-test regression run and initial PostgreSQL
+integration coverage are complete. PostgreSQL duplicate-email rollback
+recovery is verified for that failure path only, and foreign-key rejection
+coverage verifies rollback and non-persistence of its failed insert. Neither
+proves recovery or transaction behavior for every possible database failure;
+broader transaction and other relational-constraint tests remain priorities.
 
 The next work should progressively address:
 
 ```text
 Application status transition workflow (complete)
         ↓
-PostgreSQL integration testing
+Dockerized 42-test regression run + initial PostgreSQL integration coverage (complete)
         ↓
-Docker and production backend work
+Broader PostgreSQL transaction and relational-constraint testing
+        ↓
+Backend reliability and production hardening
         ↓
 Authentication / authorization
         ↓
@@ -699,7 +783,10 @@ Application status transition workflow : Implemented and tested
 Transaction/session review : Completed
 Database commit error handling : Implemented in customer and loan application services
 Rollback on handled commit errors : Implemented and failure-path tested
-Automated tests         : 41 passing
+PostgreSQL duplicate-email rollback recovery : Verified for that failure path only
+Automated tests         : 42 passed in Dockerized Compose/PostgreSQL regression run
+Dockerized local runtime : Implemented and manually verified
+Alembic migrations       : Required explicitly for containerized database schema
 AI integration          : Not started
 RAG                     : Not started
 Tool calling            : Not started
@@ -710,5 +797,5 @@ Observability           : Not started
 Production deployment   : Not started
 
 Current focus:
-PostgreSQL integration testing.
+Broader PostgreSQL transaction and other relational-constraint testing.
 ```
