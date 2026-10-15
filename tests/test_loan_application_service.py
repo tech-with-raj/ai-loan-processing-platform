@@ -3,7 +3,7 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.enums import ApplicationStatus
 from app.exceptions import (
@@ -64,6 +64,26 @@ def test_create_application_for_missing_customer(db_session):
             db_session,
             application,
         )
+
+
+def test_database_rejects_application_for_missing_customer(db_session):
+    application = LoanApplication(
+        application_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),  # No customer with this ID exists
+        loan_type="Personal Loan",
+        loan_amount=Decimal("50000.00"),
+        status=ApplicationStatus.CREATED,
+    )
+
+    db_session.add(application)
+
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+    # Clear the failed transaction so the fixture can clean up safely.
+    db_session.rollback()
+
+    assert db_session.get(LoanApplication, application.application_id) is None
         
         
 def test_create_application_rolls_back_on_database_error():

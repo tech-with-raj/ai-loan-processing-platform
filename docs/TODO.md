@@ -14,8 +14,9 @@ Tasks should be updated as the project progresses.
 
 # 1. Current Priority
 
-The immediate backend priorities are regression testing after Dockerization
-and PostgreSQL integration testing.
+The Dockerized regression run and initial PostgreSQL integration coverage are
+complete. Remaining backend priorities are broader PostgreSQL transaction and
+relational-constraint testing, followed by reliability and production hardening.
 
 The broader project direction is:
 
@@ -33,9 +34,8 @@ We should not jump directly to agentic AI before the backend foundation is relia
 
 Next backend work:
 
-1. Re-run regression tests after Dockerization
-2. FastAPI + PostgreSQL integration testing
-3. Backend reliability and production hardening
+1. Extend PostgreSQL coverage for transaction behavior and relational constraints
+2. Backend reliability and production hardening
 
 ---
 
@@ -91,7 +91,8 @@ Next backend work:
 - [x] Test validation rules
 - [x] Test business logic
 - [x] Test error conditions
-- [x] Test service commit failures, rollback, and DatabaseOperationError
+- [x] Test mocked service commit failures, rollback calls, and
+  `DatabaseOperationError`
 
 ## API Testing
 
@@ -112,11 +113,33 @@ Next backend work:
 
 ## Integration Testing
 
-- [ ] Test FastAPI + PostgreSQL integration
-- [ ] Run the regression suite after Dockerization and record the result
-- [ ] Test transaction behavior
-- [ ] Test relational constraints
-- [ ] Test complete loan application creation flow
+- [x] Test FastAPI + PostgreSQL integration through the Docker Compose database
+- [x] Run the Dockerized regression suite and record the result:
+  - `docker compose run --build --rm api python -m alembic upgrade head`
+    completed successfully.
+  - After rebuilding the API image to include the new test,
+    `docker compose run --rm api pytest -v` collected and passed all 42 tests.
+    Pytest reported one Starlette/httpx deprecation warning and no failures.
+  - The host-side run was not used because Windows PostgreSQL was listening on
+    port 5432; the successful run used temporary Compose API containers and the
+    PostgreSQL service.
+- [ ] Test broader transaction behavior against PostgreSQL; the direct
+  foreign-key rejection test verifies rollback of its failed insert and that
+  the application was not persisted, while the duplicate-email test verifies
+  recovery from that specific failure path. Neither establishes behavior for
+  every possible database failure. Service commit-failure/rollback checks use
+  mocks.
+- [x] Test customer-email uniqueness and rollback recovery against PostgreSQL:
+  after PostgreSQL rejects a duplicate email, `CustomerService` rolls back the
+  failed transaction and the same SQLAlchemy session successfully creates a
+  customer with a different email. This proves recovery from the duplicate-
+  email failure path only, not every possible database failure.
+- [x] Test PostgreSQL foreign-key rejection for an application with a
+  nonexistent customer ID; expect `IntegrityError`, roll back, and verify the
+  application was not persisted
+- [ ] Test other relational constraints directly against PostgreSQL
+- [x] Test customer creation followed by loan application creation against
+  PostgreSQL
 
 ## Test Quality
 
@@ -521,7 +544,8 @@ Execute / Escalate
 - [x] Build and manually verify the local container deployment, API endpoints,
   and customer persistence
 - [x] Add `.dockerignore`
-- [ ] Run regression tests after Dockerization
+- [x] Run regression tests after Dockerization (42 passed; result recorded in
+  the Integration Testing checklist)
 - [ ] Review `.dockerignore` coverage and investigate the approximately
   187.66 MB build context for appropriate optimization
 - [ ] Review runtime configuration and secrets management before any
@@ -624,8 +648,12 @@ Priority order:
 
 Transaction/session review, commit-time database error handling, individual
 retrieval endpoints, the application status transition workflow, and local
-Docker Compose setup are complete. Automated regression testing after
-Dockerization and PostgreSQL integration testing remain incomplete.
+Docker Compose setup are complete. The Dockerized 42-test regression run and
+initial PostgreSQL integration coverage are complete. Direct PostgreSQL
+duplicate-email rollback recovery is verified for that failure path only; the
+foreign-key rejection test verifies rollback and non-persistence of the failed
+insert. Neither covers every possible database failure. Broader PostgreSQL
+transaction behavior and other relational-constraint testing remain open.
 
 Do not start RAG or agent frameworks yet.
 
