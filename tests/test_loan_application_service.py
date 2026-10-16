@@ -84,7 +84,31 @@ def test_database_rejects_application_for_missing_customer(db_session):
     db_session.rollback()
 
     assert db_session.get(LoanApplication, application.application_id) is None
-        
+
+
+def test_database_rejects_application_with_null_customer_id(db_session):
+    application = LoanApplication(
+        application_id=uuid.uuid4(),
+        customer_id=None,
+        loan_type="Personal Loan",
+        loan_amount=Decimal("50000.00"),
+        status=ApplicationStatus.CREATED,
+    )
+
+    db_session.add(application)
+
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+    # A failed commit leaves the session transaction in a failed state.
+    db_session.rollback()
+
+    # Verify that the invalid application was not persisted.
+    assert db_session.get(
+        LoanApplication,
+        application.application_id,
+    ) is None
+    
         
 def test_create_application_rolls_back_on_database_error():
     db = MagicMock()
