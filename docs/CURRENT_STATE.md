@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-10-15
+2026-10-16
 
 ---
 
@@ -19,9 +19,10 @@ FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
 
 For local containerized development, Docker Compose runs the FastAPI API and
-PostgreSQL together. The Dockerized 42-test regression run has passed, including
-PostgreSQL duplicate-email rollback recovery for that failure path; broader
-PostgreSQL transaction and relational-constraint coverage remains open.
+PostgreSQL together. The Dockerized 43-test regression run has passed, including
+PostgreSQL duplicate-email rollback recovery and a `NOT NULL` constraint
+integration test for a null application customer ID; broader PostgreSQL
+transaction and relational-constraint coverage remains open.
 
 AI and agentic capabilities have not yet been integrated into the application.
 
@@ -179,9 +180,13 @@ The transaction/session review and commit-time database error handling are
 complete. The Dockerized regression run and initial PostgreSQL integration
 coverage are complete. A PostgreSQL foreign-key rejection test directly inserts
 a loan application with a nonexistent customer ID, expects `IntegrityError`,
-rolls back, and verifies the application was not persisted. This verifies
-rollback and non-persistence for that failed insert only; broader PostgreSQL
-transaction behavior and other relational-constraint testing remain open.
+rolls back, and verifies the application was not persisted. A separate
+`NOT NULL` constraint test directly inserts a loan application with
+`customer_id=None`, expects `IntegrityError`, rolls back, and verifies the
+application was not persisted. These verify rollback and non-persistence for
+those failed inserts only; broader PostgreSQL transaction behavior and other
+relational-constraint testing remain open.
+
 The duplicate-email test also verifies that PostgreSQL rejects a duplicate,
 `CustomerService` rolls back the failed transaction, and the same SQLAlchemy
 session then successfully creates a customer with a different email. This
@@ -550,7 +555,7 @@ This is a future target, not the current implementation.
 
 ## 13. Current Testing Status
 
-The Dockerized regression run collected and passed all 42 tests across
+The Dockerized regression run collected and passed all 43 tests across
 service and API tests:
 
 ```text
@@ -566,6 +571,8 @@ Current tests cover:
 - Customer creation and duplicate email errors at service level
 - PostgreSQL duplicate-email rejection, rollback, and same-session recovery by
   successfully creating a customer with a different email
+- PostgreSQL rejection of a loan application with a null customer ID, followed
+  by rollback and verification that the invalid application was not persisted
 - Customer service commit failure handling, rollback, and
   `DatabaseOperationError`
 - Loan application creation and missing-customer validation
@@ -588,7 +595,7 @@ docker compose run --build --rm api python -m alembic upgrade head
 Successfully completed
 
 docker compose run --rm api pytest -v
-42 passed; one Starlette/httpx deprecation warning; no test failures
+43 passed; one warning; no test failures
 ```
 
 After rebuilding the API image to include the new test, the successful run used
@@ -602,9 +609,11 @@ creates a customer with a different email. This verifies recovery from the
 duplicate-email failure path only, not every possible database failure. The
 direct foreign-key rejection test inserts a loan application with a nonexistent
 customer ID, expects PostgreSQL to raise `IntegrityError`, rolls back, and
-verifies the application was not persisted; this covers that failed insert
-only. Broader PostgreSQL transaction behavior and other relational-constraint
-coverage remain open. Future AI workflow coverage remains to be added.
+verifies the application was not persisted; a separate `NOT NULL` constraint
+test does the same for an application with `customer_id=None`. These cover
+those failed inserts only. Broader PostgreSQL transaction behavior and other
+relational-constraint coverage remain open. Future AI workflow coverage
+remains to be added.
 
 GitHub Actions was not run or verified as part of this local test run.
 
@@ -713,19 +722,20 @@ The goal is to understand how AI becomes part of a real software system.
 ## 17. Current Next Direction
 
 The application status transition workflow and local Docker Compose runtime
-are implemented. The Dockerized 42-test regression run and initial PostgreSQL
+are implemented. The Dockerized 43-test regression run and initial PostgreSQL
 integration coverage are complete. PostgreSQL duplicate-email rollback
-recovery is verified for that failure path only, and foreign-key rejection
-coverage verifies rollback and non-persistence of its failed insert. Neither
-proves recovery or transaction behavior for every possible database failure;
-broader transaction and other relational-constraint tests remain priorities.
+recovery is verified for that failure path only; foreign-key and `NOT NULL`
+constraint rejection coverage verifies rollback and non-persistence for those
+failed inserts. None proves recovery or transaction behavior for every
+possible database failure; broader transaction and other relational-constraint
+tests remain priorities.
 
 The next work should progressively address:
 
 ```text
 Application status transition workflow (complete)
         ↓
-Dockerized 42-test regression run + initial PostgreSQL integration coverage (complete)
+Dockerized 43-test regression run + initial PostgreSQL integration coverage (complete)
         ↓
 Broader PostgreSQL transaction and relational-constraint testing
         ↓
@@ -784,7 +794,7 @@ Transaction/session review : Completed
 Database commit error handling : Implemented in customer and loan application services
 Rollback on handled commit errors : Implemented and failure-path tested
 PostgreSQL duplicate-email rollback recovery : Verified for that failure path only
-Automated tests         : 42 passed in Dockerized Compose/PostgreSQL regression run
+Automated tests         : 43 passed, 1 warning in Dockerized Compose/PostgreSQL regression run
 Dockerized local runtime : Implemented and manually verified
 Alembic migrations       : Required explicitly for containerized database schema
 AI integration          : Not started
