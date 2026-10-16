@@ -552,7 +552,21 @@ translates other commit-time SQLAlchemy errors to `DatabaseOperationError`.
 `DatabaseOperationError`. Both services roll back for the caught commit-time
 errors. Unit tests exercise the general SQLAlchemy failure path for both
 services and verify rollback. The transaction/session review is complete;
-PostgreSQL integration testing remains incomplete.
+broader PostgreSQL integration testing remains incomplete.
+
+The PostgreSQL `NOT NULL` constraint integration test for
+`LoanApplication.customer_id` provided a concrete example of these concepts:
+
+- API validation and database constraints are separate safeguards. The test
+  inserts directly through SQLAlchemy, exercising the database constraint
+  independently of request validation.
+- PostgreSQL rejects `customer_id=None` with SQLAlchemy `IntegrityError`.
+  After rollback, the test confirms the invalid application was not persisted.
+- A failed commit leaves the SQLAlchemy transaction in a failed state, so the
+  test rolls back before querying with the session.
+
+These observations are specific to this test and do not establish broader
+PostgreSQL transaction or relational-constraint coverage.
 
 ---
 

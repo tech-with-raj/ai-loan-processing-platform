@@ -65,9 +65,10 @@ FastAPI → Service Layer → SQLAlchemy → PostgreSQL
 ```
 
 Local development can run the API and PostgreSQL together with Docker Compose.
-That containerized runtime has been manually verified; automated regression
-testing after Dockerization remains pending. Backend reliability and production
-hardening remain ahead of AI implementation.
+That containerized runtime has been manually verified. The Dockerized regression
+suite has passed with 43 tests and one warning, including targeted PostgreSQL
+constraint coverage. Broader PostgreSQL testing, backend reliability, and
+production hardening remain ahead of AI implementation.
 
 Implemented foundation:
 
@@ -92,15 +93,16 @@ Implemented foundation:
 - Transaction/session review
 - API tests for successful individual retrieval, missing-resource 404, and
   invalid-UUID 422 behavior
-- 41 service and API tests passed before Dockerization; a post-Docker run is
-  pending
+- Dockerized regression suite: 43 passed, 1 warning, including PostgreSQL
+  rejection of an application with a null customer ID
 - Dockerfile and Docker Compose runtime for FastAPI and PostgreSQL, manually
   verified
 - Git/GitHub project management
 - Persistent project documentation
 
-The application status transition workflow is complete. Dockerized regression
-testing and PostgreSQL integration testing are the immediate backend priorities.
+The application status transition workflow and Dockerized regression run are
+complete. Broader PostgreSQL integration testing is the immediate backend
+priority.
 
 AI and agentic capabilities are not yet implemented.
 
@@ -232,7 +234,8 @@ Transform the basic backend into a more production-oriented service.
 - API versioning where appropriate
 - Automated tests
 - Docker Compose local runtime for FastAPI and PostgreSQL (implemented and
-  manually verified; regression testing remains pending)
+  manually verified; Dockerized regression suite passed with 43 tests and one
+  warning)
 
 Service-level commit-failure handling now rolls back and raises an
 application-level database exception for the customer and loan application

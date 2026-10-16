@@ -118,17 +118,17 @@ Next backend work:
   - `docker compose run --build --rm api python -m alembic upgrade head`
     completed successfully.
   - After rebuilding the API image to include the new test,
-    `docker compose run --rm api pytest -v` collected and passed all 42 tests.
-    Pytest reported one Starlette/httpx deprecation warning and no failures.
+    `docker compose run --rm api pytest -v` collected and passed all 43 tests.
+    Pytest reported one warning and no failures.
   - The host-side run was not used because Windows PostgreSQL was listening on
     port 5432; the successful run used temporary Compose API containers and the
     PostgreSQL service.
 - [ ] Test broader transaction behavior against PostgreSQL; the direct
-  foreign-key rejection test verifies rollback of its failed insert and that
-  the application was not persisted, while the duplicate-email test verifies
-  recovery from that specific failure path. Neither establishes behavior for
-  every possible database failure. Service commit-failure/rollback checks use
-  mocks.
+  foreign-key and `NOT NULL` rejection tests verify rollback of their failed
+  inserts and that the applications were not persisted, while the
+  duplicate-email test verifies recovery from that specific failure path.
+  These do not establish behavior for every possible database failure.
+  Service commit-failure/rollback checks use mocks.
 - [x] Test customer-email uniqueness and rollback recovery against PostgreSQL:
   after PostgreSQL rejects a duplicate email, `CustomerService` rolls back the
   failed transaction and the same SQLAlchemy session successfully creates a
@@ -136,6 +136,9 @@ Next backend work:
   email failure path only, not every possible database failure.
 - [x] Test PostgreSQL foreign-key rejection for an application with a
   nonexistent customer ID; expect `IntegrityError`, roll back, and verify the
+  application was not persisted
+- [x] Test PostgreSQL `NOT NULL` rejection for an application with
+  `customer_id=None`; expect `IntegrityError`, roll back, and verify the
   application was not persisted
 - [ ] Test other relational constraints directly against PostgreSQL
 - [x] Test customer creation followed by loan application creation against
@@ -544,7 +547,7 @@ Execute / Escalate
 - [x] Build and manually verify the local container deployment, API endpoints,
   and customer persistence
 - [x] Add `.dockerignore`
-- [x] Run regression tests after Dockerization (42 passed; result recorded in
+- [x] Run regression tests after Dockerization (43 passed; result recorded in
   the Integration Testing checklist)
 - [ ] Review `.dockerignore` coverage and investigate the approximately
   187.66 MB build context for appropriate optimization
@@ -648,12 +651,13 @@ Priority order:
 
 Transaction/session review, commit-time database error handling, individual
 retrieval endpoints, the application status transition workflow, and local
-Docker Compose setup are complete. The Dockerized 42-test regression run and
+Docker Compose setup are complete. The Dockerized 43-test regression run and
 initial PostgreSQL integration coverage are complete. Direct PostgreSQL
 duplicate-email rollback recovery is verified for that failure path only; the
-foreign-key rejection test verifies rollback and non-persistence of the failed
-insert. Neither covers every possible database failure. Broader PostgreSQL
-transaction behavior and other relational-constraint testing remain open.
+foreign-key rejection and `NOT NULL` constraint tests verify rollback and
+non-persistence for their respective failed inserts. These do not cover every
+possible database failure. Broader PostgreSQL transaction behavior and other
+relational-constraint testing remain open.
 
 Do not start RAG or agent frameworks yet.
 
