@@ -6,7 +6,7 @@ from sqlalchemy import DateTime, Enum as SqlEnum, ForeignKey, Numeric, String, t
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from app.enums import ApplicationStatus
+from app.enums import ApplicationStatus, DocumentStatus
 
 class Base(DeclarativeBase):
     pass
@@ -62,6 +62,50 @@ class LoanApplication(Base):
         nullable=False,
         default=ApplicationStatus.CREATED,
         server_default=ApplicationStatus.CREATED.value,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+    )
+
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("loan_applications.application_id"),
+        nullable=False,
+    )
+
+    original_filename: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
+
+    content_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    storage_key: Mapped[str] = mapped_column(
+        String(512),
+        nullable=False,
+        unique=True,
+    )
+
+    status: Mapped[DocumentStatus] = mapped_column(
+        SqlEnum(DocumentStatus, name="document_status"),
+        nullable=False,
+        default=DocumentStatus.UPLOADED,
+        server_default=DocumentStatus.UPLOADED.value,
     )
 
     created_at: Mapped[datetime] = mapped_column(
