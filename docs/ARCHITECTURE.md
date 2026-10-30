@@ -1,1077 +1,166 @@
-# BestBank — Architecture
+# BestBank Architecture
 
-## 1. Architecture Purpose
-
-This document defines the current and target architecture of the BestBank AI-powered loan processing platform.
-
-The architecture is intentionally designed to evolve incrementally.
-
-The system should first establish a reliable software and backend foundation before introducing AI, RAG, agents, and autonomous workflows.
-
----
-
-# 2. Architecture Evolution
-
-BestBank follows this architectural progression:
+## Current architecture
 
 ```text
-Foundation
-    ↓
-Backend API
-    ↓
-Database
-    ↓
-Business Services
-    ↓
-AI Processing
-    ↓
-RAG
-    ↓
-Tools
-    ↓
-Agent Orchestration
-    ↓
-Controlled Autonomy
-    ↓
-Evaluation + Observability
-    ↓
-Production AI System
+React/Vite frontend
+        |
+        | HTTP/JSON (X-API-Key when configured)
+        v
+FastAPI application
+        |
+        +-- API routes (app/main.py)
+        +-- service layer (app/services/)
+        +-- Pydantic request/response schemas
+        +-- application exceptions and handlers
+        |
+        v
+SQLAlchemy 2
+        |
+        v
+PostgreSQL 16
 ```
 
-Each layer should be introduced when there is a clear requirement for it.
+Docker Compose provides the PostgreSQL and FastAPI containers. The frontend runs separately with Vite in development.
 
----
+## Backend components
 
-# 3. Current Architecture
+### Configuration
 
-The current application architecture is centered around:
+`app/config.py` loads environment variables through `python-dotenv`.
+
+- `DATABASE_URL` is required.
+- `API_KEY` is optional. When it is set, protected routes require the `X-API-Key` header. The root route is public.
+
+### Database
+
+`app/database.py` creates the SQLAlchemy engine and session factory. Requests receive a session through `get_db()` and the session closes after the request.
+
+### Models
+
+`app/models.py` defines:
+
+- `Customer`
+- `LoanApplication`
+- `Document`
+
+`Customer` and `LoanApplication` relationships are represented with foreign keys. Documents have a model and database migration, but there is currently no document upload API.
+
+### Schemas
+
+`app/schemas.py` contains the Pydantic v2 request and response contracts. It validates customer fields, supported loan types, loan amount limits, and application status updates.
+
+The loan application response normalizes legacy stored loan-type values before serialization.
+
+### Routes
+
+`app/main.py` exposes:
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/` | Service health message |
+| POST | `/customers` | Create a customer |
+| GET | `/customers` | List customers with pagination |
+| GET | `/customers/{customer_id}` | Retrieve a customer |
+| POST | `/applications` | Create an application |
+| GET | `/applications` | List applications with pagination |
+| GET | `/applications/{application_id}` | Retrieve an application |
+| PATCH | `/applications/{application_id}/status` | Advance or reject an application |
+
+List routes use `limit` and `offset` query parameters. Limits are constrained to 1-100 rows.
+
+### Services
+
+Customer operations and application operations live in service classes:
+
+- `app/services/customer_service.py`
+- `app/services/loan_application_service.py`
+
+Services perform existence checks, duplicate handling, commits, rollbacks, and application-level error translation.
+
+### Error handling
+
+Application exceptions are registered in `app/exception_handlers.py` and return JSON `detail` responses:
+
+- 400 invalid status transition
+- 404 customer or application not found
+- 409 duplicate customer email
+- 500 database operation failure
+- 422 FastAPI/Pydantic validation error
+
+## Status workflows
+
+Application statuses are:
 
 ```text
-FastAPI → Service Layer → SQLAlchemy → PostgreSQL
+CREATED -> DOCUMENTS_PENDING -> PROCESSING -> VALIDATION -> REVIEW
+                                                           |
+                                                   APPROVED / REJECTED
 ```
 
-For local containerized development, Docker Compose runs the API and database
-as separate services:
+Only transitions declared in `APPLICATION_STATUS_TRANSITIONS` are permitted. Approved and rejected are terminal.
+
+Document statuses are modeled as:
 
 ```text
-Client
-  |
-  | http://localhost:8000
-  v
-FastAPI (api container)
-  |
-  | Compose network: postgres:5432
-  v
-PostgreSQL (postgres container)
-  |
-  v
-Named volume: postgres_data
+MISSING -> UPLOADED -> PROCESSING -> PROCESSED -> VALIDATION_REQUIRED
+                                                   |
+                                             VALID / INVALID
 ```
 
-The current runtime has a Docker Compose-managed FastAPI API container and a
-PostgreSQL 16 container.
+The document transition rules are defined in `app/enums.py`, but document workflow endpoints are not implemented yet.
 
----
+## Database migrations
 
-# 4. Current Component Structure
+Alembic manages schema evolution.
 
-```text
-                    Client
-                      |
-                      v
-               Host port 8000
-                      |
-                      v
-               FastAPI API container
-                      |
-                      v
-                 Service Layer
-                      |
-                      v
-                   SQLAlchemy
-                      |
-         Compose network (`postgres:5432`)
-                      |
-                      v
-              PostgreSQL container
-                      |
-                      v
-             `postgres_data` volume
-```
+The migration chain currently includes:
 
-Responsibilities are currently separated as follows.
+1. Initial customer and loan application schema.
+2. Customer timezone-aware timestamps.
+3. Documents table and document status enum.
 
-### Dockerfile
-
-Builds the API image from `python:3.13-slim`, installs dependencies from
-`requirements.txt`, copies the application into the image, and starts Uvicorn
-on port `8000`.
-
-### FastAPI Container
-
-Runs the API in the `api` Compose service and publishes container port `8000`
-on host port `8000`. It receives its database configuration from the Compose
-service environment.
-
-### PostgreSQL Container
-
-Runs PostgreSQL 16 in the `postgres` service and publishes port `5432` for
-host access. A health check uses `pg_isready`; the API waits for this health
-check before starting.
-
-### Docker Compose Network
-
-Compose provides service-to-service networking. The API connects to the
-database using the service hostname `postgres` and PostgreSQL port `5432`;
-container-to-container traffic does not use `localhost`.
-
-### PostgreSQL Named Volume
-
-The `postgres_data` named volume is mounted at PostgreSQL's data directory so
-database files persist when containers are stopped and recreated. The normal
-`docker compose down` command does not remove this volume.
-
-### Alembic Migrations
-
-Alembic owns application schema creation and changes. Migrations are applied
-explicitly inside the API container with:
+Database startup through Docker Compose does not run migrations automatically. Apply migrations explicitly:
 
 ```powershell
 docker compose exec api python -m alembic upgrade head
 ```
 
-Starting PostgreSQL does not create application tables. Apply migrations
-before using endpoints that require those tables.
+## Frontend architecture
 
-### FastAPI
+The React frontend uses:
 
-Responsible for:
+- React 19
+- TypeScript 6
+- Vite 8
+- `src/services/api.ts` for backend calls
+- `src/types.ts` for API response and request types
 
-- HTTP API
-- Routing
-- Request handling
-- Dependency injection
-- API responses
-- Registering centralized application exception handlers
-- Translating `CustomerNotFoundError` into HTTP 404 Not Found
-- Translating `ApplicationNotFoundError` into HTTP 404 Not Found
-- Translating `DuplicateCustomerError` into HTTP 409 Conflict
-- Translating `DatabaseOperationError` into HTTP 500 Internal Server Error
+The dashboard is organized as application views rather than URL routes. It includes:
 
-### Service Layer
+- dashboard summary cards
+- customer and application data
+- application creation
+- search and application display
+- placeholder documents, validation, assistant, and login surfaces
 
-Responsible for:
+The login surface is presentation only; it does not create an authenticated backend session. Status updates are supported by the API but are not currently exposed in the main React workflow.
 
-- Customer creation
-- Loan application creation
-- Individual customer and loan application retrieval
-- Application status transitions through `ApplicationStatus`,
-  `APPLICATION_STATUS_TRANSITIONS`, and `can_transition()`
-- Business logic separate from API logic
-- Translating duplicate-customer persistence errors into `DuplicateCustomerError`
-- Rolling back and translating commit-time SQLAlchemy errors into
-  `DatabaseOperationError`
-- Raising `CustomerNotFoundError` when a referenced customer does not exist
-- Remaining independent of HTTP concerns
+## Deployment
 
-### Pydantic
+The API image uses Python 3.13 and starts Uvicorn on port 8000. PostgreSQL is exposed on host port 5432. The frontend is not included in Docker Compose.
 
-Responsible for:
+## Planned architecture boundaries
 
-- Request validation
-- Response schemas
-- API data contracts
+These capabilities are goals, not current runtime components:
 
-### SQLAlchemy
-
-Responsible for:
-
-- ORM mapping
-- Database interaction
-- Database sessions
-
-### PostgreSQL
-
-Responsible for:
-
-- Persistent data storage
-- Relational integrity
-- Customer data
-- Loan application data
-
----
-
-# 5. Current Application Components
-
-Current backend components include:
-
-```text
-app/
-├── config.py
-├── database.py
-├── exceptions.py
-├── exception_handlers.py
-├── main.py
-├── models.py
-├── schemas.py
-└── services/
-  ├── customer_service.py
-  └── loan_application_service.py
-```
-
-### `config.py`
-
-Responsible for application configuration currently required for database connectivity.
-
-### `database.py`
-
-Responsible for:
-
-```text
-DATABASE_URL
-     ↓
-SQLAlchemy Engine
-     ↓
-SessionLocal
-     ↓
-Database Session
-```
-
-### `models.py`
-
-Contains SQLAlchemy models for:
-
-```text
-Customer
-LoanApplication
-```
-
-### `schemas.py`
-
-Contains Pydantic schemas for API contracts.
-
-### `main.py`
-
-Contains the FastAPI application and current API endpoints.
-
-### `services/`
-
-Contains service functions used by the API endpoints for customer and loan application creation.
-
----
-
-# 6. Current Data Architecture
-
-The current database contains two primary entities:
-
-```text
-Customer
-    |
-    | 1
-    |
-    | N
-    v
-LoanApplication
-```
-
-Relationship:
-
-```text
-customers.customer_id
-        |
-        v
-loan_applications.customer_id
-```
-
-The relationship is enforced using a PostgreSQL foreign key.
-
----
-
-# 7. Current API Layer
-
-Current API endpoints:
-
-```text
-GET  /
-POST /customers
-GET  /customers
-GET  /customers/{customer_id}
-POST /applications
-GET  /applications
-GET  /applications/{application_id}
-PATCH /applications/{application_id}/status
-```
-
-Customer creation follows this flow:
-
-```text
-POST /customers
-  ↓
-FastAPI request validation
-  ↓
-CustomerService
-  ↓
-SQLAlchemy
-  ↓
-PostgreSQL UNIQUE constraint
-```
-
-If the customer email already exists, `CustomerService` rolls back the
-transaction and raises the application-level `DuplicateCustomerError`.
-The centralized exception handler translates it into HTTP 409 Conflict. The
-service layer does not raise or depend on `HTTPException`.
-
-Application exceptions inherit from `ApplicationError`:
-
-```text
-ApplicationError
-├── DuplicateCustomerError
-├── CustomerNotFoundError
-├── ApplicationNotFoundError
-├── InvalidApplicationStatusTransitionError
-└── DatabaseOperationError
-```
-
-The exception flow is:
-
-```text
-Service Layer
-  ↓
-Application Exception
-  ↓
-Centralized Exception Handler
-  ↓
-HTTP Response
-```
-
-`LoanApplicationService` raises `CustomerNotFoundError` when the referenced
-customer is missing. The centralized handler maps it to HTTP 404 Not Found;
-`DuplicateCustomerError` maps to HTTP 409 Conflict, and
-`DatabaseOperationError` maps to HTTP 500 Internal Server Error. These
-responses use the existing `{"detail": ...}` structure. Route-level
-try/except handling is not used in `main.py`.
-
-`CustomerService` and `LoanApplicationService` retrieve individual resources
-by UUID. Missing customers and applications map to HTTP 404, with
-`ApplicationNotFoundError` used for a missing loan application. FastAPI
-returns HTTP 422 for invalid UUID path parameters. API tests cover successful
-retrieval and these missing-resource and invalid-UUID responses.
-
-`PATCH /applications/{application_id}/status` validates the requested status
-with `ApplicationStatus`, then delegates to `LoanApplicationService`. The
-service checks transitions against `APPLICATION_STATUS_TRANSITIONS` through
-`can_transition()`, persists valid transitions, and raises
-`InvalidApplicationStatusTransitionError` for disallowed transitions; the
-centralized handler maps these to HTTP 400.
-
-For commit-time database failures during customer or loan application
-creation, the services roll back the SQLAlchemy session and raise
-`DatabaseOperationError`. Customer `IntegrityError` failures instead roll
-back and raise `DuplicateCustomerError`. Failure-path tests cover rollback and
-the application-level error for general SQLAlchemy commit failures. The
-transaction/session review is complete. PostgreSQL integration testing and
-automated regression testing after Dockerization remain incomplete.
-
-The current flow for creating a loan application is:
-
-```text
-Client
-  |
-  | POST /applications
-  v
-FastAPI
-  |
-  v
-Pydantic Validation
-  |
-  v
-LoanApplicationService
-  |
-  v
-SQLAlchemy
-  |
-  v
-PostgreSQL
-```
-
----
-
-# 8. Target Backend Architecture
-
-This is a future architecture. A repository/data-access layer is not currently
-implemented; current persistence goes from the service layer through SQLAlchemy.
-
-As the system grows, business logic should not remain entirely inside API route handlers.
-
-The backend should evolve toward:
-
-```text
-Client
-   |
-   v
-FastAPI
-   |
-   v
-API Layer
-   |
-   v
-Service Layer
-   |
-   +------------------+
-   |                  |
-   v                  v
-Repository/Data     Business
-Access Layer        Logic
-   |                  |
-   +--------+---------+
-            |
-            v
-       PostgreSQL
-```
-
-The purpose is to separate:
-
-```text
-HTTP concerns
-Business logic
-Data access
-```
-
-This will make the system easier to test, maintain, and extend.
-
----
-
-# 9. Target AI Processing Layer
-
-AI should be introduced as a separate system capability rather than embedding LLM calls directly into API routes.
-
-Target structure:
-
-```text
-FastAPI
-   |
-   v
-Business Service
-   |
-   v
-AI Processing Layer
-   |
-   +------------+-------------+
-   |            |             |
-   v            v             v
-  LLM          RAG          Tools
-```
-
-The AI layer should have clear contracts with the rest of the application.
-
----
-
-# 10. Document Processing Architecture
-
-The target document workflow is:
-
-```text
-Loan Application
-       |
-       v
-Document Collection
-       |
-       v
-Document Processing
-       |
-       v
-Information Extraction
-       |
-       v
-Structured Data
-       |
-       v
-Validation
-```
-
-The system should distinguish between:
-
-```text
-Raw Document
-      ↓
-Extracted Information
-      ↓
-Validated Information
-```
-
-This separation makes the workflow easier to test and evaluate.
-
----
-
-# 11. Validation Architecture
-
-Application data and extracted document data should be compared by a validation component.
-
-```text
-Application Data
-       |
-       |
-       v
-+-------------------+
-| Validation Engine |
-+-------------------+
-       ^
-       |
-       |
-Extracted Document Data
-```
-
-The validation system should identify:
-
-```text
-MATCH
-MISMATCH
-MISSING
-INVALID
-REQUIRES_REVIEW
-```
-
-Deterministic validation rules should be preferred where deterministic logic is sufficient.
-
----
-
-# 12. RAG Architecture
-
-Banking policy retrieval will eventually use Retrieval-Augmented Generation.
-
-Target architecture:
-
-```text
-User / System Question
-          |
-          v
-       Retriever
-          |
-          v
-     Vector Search
-          |
-          v
- Relevant Policy Chunks
-          |
-          v
-       LLM Context
-          |
-          v
-   Grounded Response
-```
-
-The RAG system should maintain separation between:
-
-```text
-Retrieval
-Generation
-Validation
-```
-
-The LLM should not be treated as the source of truth for banking policies.
-
-Retrieved authoritative policy information should provide the grounding context.
-
----
-
-# 13. Tool Architecture
-
-Agentic workflows will use controlled tools.
-
-Examples:
-
-```text
-Document Tool
-Validation Tool
-Policy Retrieval Tool
-Customer Data Tool
-Loan Application Tool
-Report Generation Tool
-```
-
-Target structure:
-
-```text
-Agent
-  |
-  +--> Tool 1
-  |
-  +--> Tool 2
-  |
-  +--> Tool 3
-  |
-  +--> Tool 4
-```
-
-Each tool should have:
-
-- Defined input
-- Defined output
-- Permission boundaries
-- Validation
-- Error handling
-- Logging
-- Appropriate authorization
-
-Tools should not provide unrestricted access to backend capabilities.
-
----
-
-# 14. Agent Architecture
-
-The target agent architecture is:
-
-```text
-Loan Application
-       |
-       v
-Agent Orchestrator
-       |
-       +-----------------------+
-       |           |           |
-       v           v           v
-Documents      Validation     RAG
-Tool           Tool           Tool
-       |           |           |
-       +-----------+-----------+
-                   |
-                   v
-            Agent State
-                   |
-                   v
-             Final Report
-                   |
-                   v
-            Human Approval
-```
-
-The agent should operate within defined boundaries.
-
-The agent should not independently perform unrestricted banking operations.
-
----
-
-# 15. Agent State
-
-Multi-step workflows require explicit state.
-
-Example:
-
-```text
-Application State
-       |
-       +-- customer information
-       |
-       +-- documents received
-       |
-       +-- extraction results
-       |
-       +-- validation results
-       |
-       +-- retrieved policies
-       |
-       +-- identified issues
-       |
-       +-- approval status
-```
-
-Agent state should be persisted or recoverable where required by the workflow.
-
----
-
-# 16. Controlled Autonomy Architecture
-
-The system should progressively increase autonomy.
-
-```text
-Level 0
-Human performs process
-
-      ↓
-
-Level 1
-AI assists human
-
-      ↓
-
-Level 2
-AI produces recommendations
-
-      ↓
-
-Level 3
-AI executes approved tools
-
-      ↓
-
-Level 4
-AI executes multi-step workflows
-
-      ↓
-
-Level 5
-Controlled autonomous workflow
-with human escalation
-```
-
-The project should progress through these levels rather than immediately attempting unrestricted autonomy.
-
----
-
-# 17. Human-in-the-Loop Architecture
-
-Important operations should support human intervention.
-
-Target:
-
-```text
-                 AI Workflow
-                     |
-                     v
-               Risk / Policy
-                 Evaluation
-                     |
-            +--------+--------+
-            |                 |
-            v                 v
-       Low Risk          Requires Review
-            |                 |
-            v                 v
-      Continue Flow      Human Review
-                              |
-                              v
-                         Decision / Action
-```
-
-The system should provide an explicit escalation path.
-
----
-
-# 18. Guardrail Architecture
-
-AI actions should be constrained by multiple layers.
-
-```text
-User Input
-    ↓
-Input Validation
-    ↓
-AI Reasoning
-    ↓
-Tool Permission Check
-    ↓
-Tool Execution
-    ↓
-Output Validation
-    ↓
-Audit Logging
-```
-
-Important operations should not rely solely on an LLM instruction such as:
-
-```text
-"Do not perform dangerous actions."
-```
-
-The system should enforce important restrictions at the software level.
-
----
-
-# 19. AI Evaluation Architecture
-
-AI components should have measurable evaluation criteria.
-
-```text
-AI Input
-   |
-   v
-AI System
-   |
-   v
-Output
-   |
-   v
-Evaluation
-   |
-   +--> Accuracy
-   +--> Groundedness
-   +--> Tool Selection
-   +--> Workflow Success
-   +--> Failure Rate
-   +--> Latency
-   +--> Cost
-```
-
-Evaluation should be treated as an engineering capability.
-
----
-
-# 20. Observability Architecture
-
-The future production system should provide visibility into:
-
-```text
-API Requests
-    |
-    v
-Application Logs
-    |
-    +--> AI Calls
-    |
-    +--> Tool Calls
-    |
-    +--> Retrieval
-    |
-    +--> Agent Steps
-    |
-    +--> Errors
-    |
-    +--> Latency
-    |
-    +--> Cost
-```
-
-The objective is to understand what the AI system did and why.
-
----
-
-# 21. Security Architecture
-
-Security should exist across the system.
-
-```text
-Client
-  ↓
-Authentication
-  ↓
-Authorization
-  ↓
-API Validation
-  ↓
-Business Logic
-  ↓
-Tool Authorization
-  ↓
-Database Access
-```
-
-AI-specific security should additionally address:
-
-```text
-Prompt Injection
-Data Leakage
-Unauthorized Tool Use
-Excessive Agent Permissions
-Sensitive Information Exposure
-Unsafe Outputs
-```
-
----
-
-# 22. Production Target Architecture
-
-The eventual target architecture is:
-
-```text
-                         Client
-                           |
-                           v
-                    API Gateway / API
-                           |
-                           v
-                    FastAPI Backend
-                           |
-              +------------+------------+
-              |                         |
-              v                         v
-        Business Services        Authentication
-              |
-              v
-        Data / Repository
-              |
-              v
-          PostgreSQL
-              |
-              v
-       AI Processing Layer
-              |
-       +------+------+------+
-       |      |      |      |
-       v      v      v      v
-      LLM    RAG   Tools  Evaluation
-       |      |      |
-      +------+------+
-              |
-              v
-       Agent Orchestrator
-              |
-              v
-        Agent State
-              |
-              v
-      Guardrails / Policy
-              |
-        +-----+-----+
-        |           |
-        v           v
-   Automated    Human Review
-     Action
-        |           |
-        +-----+-----+
-              |
-              v
-          Audit Logs
-              |
-              v
-       Observability
-              |
-              v
-      Monitoring / Alerts
-```
-
-This is a target architecture and will be implemented incrementally.
-
----
-
-# 23. Architectural Principles
-
-The architecture follows these principles:
-
-### Principle 1 — Separation of Responsibilities
-
-Each component should have a clear responsibility.
-
-### Principle 2 — Deterministic Where Possible
-
-Use traditional software when deterministic logic is sufficient.
-
-### Principle 3 — AI Where Valuable
-
-Use AI for tasks where reasoning, document understanding, retrieval, or language capabilities provide meaningful value.
-
-### Principle 4 — Least Privilege
-
-Agents and tools should receive only the permissions they require.
-
-### Principle 5 — Human Oversight
-
-Important decisions should support human review.
-
-### Principle 6 — Observable AI
-
-AI operations should be measurable and traceable.
-
-### Principle 7 — Evaluated AI
-
-AI functionality should be evaluated using explicit metrics.
-
-### Principle 8 — Incremental Complexity
-
-Do not introduce agents, orchestration frameworks, or infrastructure before the underlying problem requires them.
-
-### Principle 9 — Production Mindset
-
-Correctness, security, reliability, maintainability, latency, cost, and scalability are architectural concerns.
-
----
-
-# 24. Architecture Evolution Rule
-
-The architecture should evolve only when there is a demonstrated requirement.
-
-Example:
-
-```text
-Simple API
-    ↓
-Service Layer
-    ↓
-AI Service
-    ↓
-RAG Service
-    ↓
-Tool Layer
-    ↓
-Agent Orchestrator
-    ↓
-State Management
-    ↓
-Evaluation
-    ↓
-Observability
-```
-
-A new framework or infrastructure component should only be introduced when it solves a concrete engineering problem.
-
----
-
-# 25. Current vs Target
-
-| Capability | Current | Target |
-|---|---|---|
-| FastAPI | Implemented | Production-ready |
-| PostgreSQL | Implemented | Production-ready |
-| SQLAlchemy | Implemented | Production-ready |
-| Business service layer | Implemented for create flows; broader work remains | Implemented |
-| Service commit-failure handling | Implemented for customer and application creation | Broader database behavior reviewed and tested |
-| Transaction/session review | Complete | Reviewed and tested |
-| Application status transition workflow | Complete | Implemented and tested |
-| Document processing | Not implemented | Implemented |
-| LLM | Not implemented | Implemented |
-| RAG | Not implemented | Implemented |
-| Tools | Not implemented | Implemented |
-| Agent orchestration | Not implemented | Implemented |
-| Agent state | Not implemented | Implemented |
-| Human approval | Not implemented | Implemented |
-| Guardrails | Not implemented | Implemented |
-| AI evaluation | Not implemented | Implemented |
-| Observability | Not implemented | Implemented |
-| Local Docker Compose | Implemented; manually verified | Production deployment |
-| CI/CD | Planned | Implemented |
-| Cloud deployment | Planned | Implemented |
-
----
-
-# 26. Architectural Goal
-
-The final architecture should demonstrate that BestBank is not simply an application that calls an LLM.
-
-It should demonstrate:
-
-```text
-Software Engineering
-        +
-Backend Engineering
-        +
-AI Engineering
-        +
-RAG
-        +
-Tool Engineering
-        +
-Agent Engineering
-        +
-Security
-        +
-Evaluation
-        +
-Observability
-        +
-Cloud / DevOps
-        =
-AI Systems Engineering
-```
-
-The architecture should ultimately support reliable collaboration between:
-
-```text
-Human
-  +
-AI
-  +
-Software Systems
-  +
-External Tools
-```
-
-with appropriate control, evaluation, observability, and escalation mechanisms.
+- Document storage and upload service
+- OCR/document parsing
+- Structured extraction
+- Deterministic and cross-document validation
+- Banking policy retrieval and RAG
+- Controlled AI agent/tool orchestration
+- Human approval and audit trail
+- Evaluation, tracing, and metrics
+- Authentication and authorization
+- Cloud deployment and CI/CD
