@@ -64,7 +64,33 @@ describe('Frontend pages', () => {
     renderWithOperations(<CustomersPage />)
 
     expect(await screen.findByRole('cell', { name: 'Test Customer' })).toBeTruthy()
-    expect(screen.getByText(/loaded/i)).toBeTruthy()
+    expect(screen.queryByText(/loaded/i)).not.toBeTruthy()
+  })
+
+  it('paginates a complete customer dataset and handles empty searches', async () => {
+    const customersPage = Array.from({ length: 12 }, (_, index) => ({
+      ...customer,
+      customer_id: `${index}-customer`,
+      name: `Customer ${index + 1}`,
+    }))
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/customers')) return jsonResponse(200, customersPage)
+      if (url.includes('/applications')) return jsonResponse(200, [])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    renderWithOperations(<CustomersPage />, '/customers')
+
+    expect(await screen.findByRole('cell', { name: 'Customer 1' })).toBeTruthy()
+    expect(screen.getByText('Page 1 of 2')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByRole('cell', { name: 'Customer 11' })).toBeTruthy()
+    expect(screen.queryByRole('cell', { name: 'Customer 1' })).not.toBeTruthy()
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search customers' }), {
+      target: { value: 'no matching customer' },
+    })
+    expect(await screen.findByText('No customers match your search.')).toBeTruthy()
   })
 
   it('creates a customer and refreshes the directory', async () => {
@@ -105,6 +131,35 @@ describe('Frontend pages', () => {
     renderWithOperations(<ApplicationsPage />, '/applications')
 
     expect(await screen.findByRole('cell', { name: 'Personal Loan' })).toBeTruthy()
+  })
+
+  it('paginates applications across all pages and restores a valid page after filtering', async () => {
+    const applicationsPage = Array.from({ length: 12 }, (_, index) => ({
+      ...application,
+      application_id: `application-${index + 1}`,
+      loan_type: index >= 10 ? 'Home Loan' : 'Personal Loan',
+      created_at: `2026-01-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+    }))
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/applications')) return jsonResponse(200, applicationsPage)
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    renderWithOperations(<ApplicationsPage />, '/applications')
+
+    expect(await screen.findByText('Page 1 of 2')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'oldest' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() => {
+      expect(screen.getByText('Page 2 of 2')).toBeTruthy()
+      expect(screen.getAllByRole('cell', { name: 'Home Loan' })).toHaveLength(2)
+    })
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search applications' }), {
+      target: { value: 'does-not-exist' },
+    })
+    expect(await screen.findByText('No applications match your current filter.')).toBeTruthy()
   })
 
   it('creates an application and navigate to its detail route', async () => {

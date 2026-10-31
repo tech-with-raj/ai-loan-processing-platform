@@ -13,6 +13,29 @@ afterEach(() => {
 })
 
 describe('API client', () => {
+  it('loads every customer page through complete offset polling', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({ customer_id: `c${index}` }))
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, firstPage))
+      .mockResolvedValueOnce(jsonResponse(200, [{ customer_id: 'c100' }]))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(api.getAllCustomers()).resolves.toHaveLength(101)
+    expect(fetchMock.mock.calls[0][0]).toContain('/customers?limit=100&offset=0')
+    expect(fetchMock.mock.calls[1][0]).toContain('/customers?limit=100&offset=100')
+  })
+
+  it('loads every application page and stops on a short final page', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, Array.from({ length: 100 }, (_, index) => ({
+        application_id: `a${index}`,
+      }))))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(api.getAllApplications()).resolves.toHaveLength(100)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
   it('returns successful JSON responses', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, [{ customer_id: 'c1' }])))
 

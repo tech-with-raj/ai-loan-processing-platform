@@ -33,8 +33,8 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
     setApplicationsError('')
 
     const [customerResult, applicationResult] = await Promise.allSettled([
-      api.getCustomers({ limit: 100 }, controller.signal),
-      api.getApplications({ limit: 100 }, controller.signal),
+      api.getAllCustomers(controller.signal),
+      api.getAllApplications(controller.signal),
     ])
 
     if (controller.signal.aborted) return

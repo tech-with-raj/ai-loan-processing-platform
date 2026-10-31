@@ -90,9 +90,28 @@ function paginationQuery(query?: PaginationQuery) {
   return value ? `?${value}` : ''
 }
 
+async function fetchAll<T>(
+  fetchPage: (query: PaginationQuery, signal?: AbortSignal) => Promise<T[]>,
+  signal?: AbortSignal,
+) {
+  const pageSize = 100
+  const result: T[] = []
+
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await fetchPage({ limit: pageSize, offset }, signal)
+    result.push(...page)
+    if (page.length < pageSize) return result
+  }
+}
+
 export const api = {
   getCustomers: (query?: PaginationQuery, signal?: AbortSignal) =>
     request<Customer[]>(`/customers${paginationQuery(query)}`, { signal }),
+  getAllCustomers: (signal?: AbortSignal) =>
+    fetchAll<Customer>(
+      (query, requestSignal) => request<Customer[]>(`/customers${paginationQuery(query)}`, { signal: requestSignal }),
+      signal,
+    ),
   getCustomer: (customerId: string, signal?: AbortSignal) =>
     request<Customer>(`/customers/${customerId}`, { signal }),
   createCustomer: (payload: CreateCustomerInput, signal?: AbortSignal) =>
@@ -103,6 +122,11 @@ export const api = {
     }),
   getApplications: (query?: PaginationQuery, signal?: AbortSignal) =>
     request<LoanApplication[]>(`/applications${paginationQuery(query)}`, { signal }),
+  getAllApplications: (signal?: AbortSignal) =>
+    fetchAll<LoanApplication>(
+      (query, requestSignal) => request<LoanApplication[]>(`/applications${paginationQuery(query)}`, { signal: requestSignal }),
+      signal,
+    ),
   getApplication: (applicationId: string, signal?: AbortSignal) =>
     request<LoanApplication>(`/applications/${applicationId}`, { signal }),
   createApplication: (payload: CreateApplicationInput) =>

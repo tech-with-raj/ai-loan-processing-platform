@@ -160,7 +160,10 @@ export function ApplicationsPage() {
             <div className="table-controls">
               <SearchInput
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value)
+                  setPage(1)
+                }}
                 placeholder="Search applications"
                 aria-label="Search applications"
               />
