@@ -64,3 +64,11 @@ export interface LoanDocument {
   status: DocumentStatus
   created_at: string
 }
+
+export type {
+  ProposedDocumentProcessing,
+  ProposedExtractedField,
+  ProposedExtractedSection,
+  ProposedProcessingEvent,
+  ProposedValidationFinding,
+} from './contracts/aiDocumentProcessing'

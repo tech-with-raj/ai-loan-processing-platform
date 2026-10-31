@@ -104,4 +104,15 @@ describe('API client', () => {
         message: expect.stringContaining('unsupported media type'),
       })
   })
+
+  it('keeps proposed AI processing methods explicitly disconnected', async () => {
+    await expect(api.getProposedDocumentProcessing('a1', 'd1')).rejects.toMatchObject({
+      status: 501,
+      message: expect.stringContaining('pending backend implementation'),
+    })
+    await expect(api.saveProposedHumanCorrections('a1', 'd1', { Full_name: 'Test Name' })).rejects.toMatchObject({
+      status: 501,
+      message: expect.stringContaining('pending backend authorization'),
+    })
+  })
 })

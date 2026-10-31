@@ -138,4 +138,12 @@ export const api = {
     Promise.reject(
       new ApiError('Authorized document download is pending backend integration.', 501),
     ),
+  getProposedDocumentProcessing: (_applicationId: string, _documentId: string, _signal?: AbortSignal) =>
+    Promise.reject(
+      new ApiError('AI document processing integration is pending backend implementation.', 501),
+    ),
+  saveProposedHumanCorrections: (_applicationId: string, _documentId: string, _corrections: unknown, _signal?: AbortSignal) =>
+    Promise.reject(
+      new ApiError('Human correction integration is pending backend authorization.', 501),
+    ),
 }

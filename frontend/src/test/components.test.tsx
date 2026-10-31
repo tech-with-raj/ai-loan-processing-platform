@@ -8,6 +8,13 @@ import { EmptyState, ErrorState } from '../components/FeedbackStates'
 import { Input, Select, Textarea } from '../components/FormControls'
 import { DocumentUploader } from '../components/DocumentUploader'
 import { MAX_DOCUMENT_SIZE_BYTES, validateDocumentFile } from '../utils/documentValidation'
+import { DocumentProcessingOverview } from '../components/DocumentProcessingOverview'
+import { ExtractionResults } from '../components/ExtractionResults'
+import { ConfidenceIndicator } from '../components/ConfidenceIndicator'
+import { ValidationFindings } from '../components/ValidationFindings'
+import { HumanVerificationPanel } from '../components/HumanVerificationPanel'
+import { ProcessingTimeline } from '../components/ProcessingTimeline'
+import { AiDocumentProcessing } from '../components/AiDocumentProcessing'
 import { DocumentList } from '../components/DocumentList'
 import { DocumentStatusBadge } from '../components/DocumentStatusBadge'
 import { DocumentManager } from '../components/DocumentManager'
@@ -145,5 +152,110 @@ describe('Document management components', () => {
     render(<DocumentManager applicationId="application-1" loading />)
     expect(screen.getByText(/Backend integration pending/i)).toBeTruthy()
     expect(screen.getByText(/Loading documents/i)).toBeTruthy()
+  })
+})
+
+describe('AI document processing components', () => {
+  it('renders disconnected processing and loading states', () => {
+    const { rerender } = render(<DocumentProcessingOverview />)
+    expect(screen.getByText('AI processing not connected')).toBeTruthy()
+    expect(screen.getByText(/awaiting backend integration/i)).toBeTruthy()
+
+    rerender(<DocumentProcessingOverview loading />)
+    expect(screen.getByText(/Loading AI processing status/i)).toBeTruthy()
+  })
+
+  it('renders processing overview data supplied only by test fixtures', () => {
+    render(
+      <DocumentProcessingOverview processing={{
+        document_id: 'test-document-1',
+        processing_status: 'VALIDATION_REQUIRED',
+        processing_stage: 'Human review',
+        last_processed_at: '2026-11-01T00:00:00Z',
+        extraction_available: true,
+        validation_status: 'REQUIRES_HUMAN_REVIEW',
+        human_review_required: true,
+      }} />,
+    )
+
+    expect(screen.getByText('VALIDATION REQUIRED')).toBeTruthy()
+    expect(screen.getAllByText('Human review').length).toBeGreaterThan(0)
+    expect(screen.getByText('Available')).toBeTruthy()
+    expect(screen.getByText('REQUIRES HUMAN REVIEW')).toBeTruthy()
+    expect(screen.getByText('Required')).toBeTruthy()
+  })
+
+  it('renders only returned extracted sections and missing field states', () => {
+    render(
+      <ExtractionResults sections={[{
+        title: 'Customer Information',
+        fields: [
+          { label: 'Full name', value: 'Test Customer', confidence: 0.92, source: 'Test OCR fixture', validationStatus: 'VALID', humanVerificationStatus: 'CONFIRMED' },
+          { label: 'Date of birth', value: null, validationStatus: 'MISSING' },
+        ],
+      }]} />,
+    )
+
+    expect(screen.getByText('Customer Information')).toBeTruthy()
+    expect(screen.getByText('Test Customer')).toBeTruthy()
+    expect(screen.getByText('Missing')).toBeTruthy()
+    expect(screen.getByText('92% confidence')).toBeTruthy()
+    expect(screen.getByText(/Human verification: CONFIRMED/i)).toBeTruthy()
+
+    render(<ExtractionResults sections={[]} />)
+    expect(screen.getByText('No extracted information available')).toBeTruthy()
+  })
+
+  it('shows unavailable and bounded confidence indicators without implying correctness', () => {
+    const { rerender } = render(<ConfidenceIndicator />)
+    expect(screen.getByText('Confidence unavailable')).toBeTruthy()
+    rerender(<ConfidenceIndicator score={1.4} />)
+    expect(screen.getByLabelText(/confidence 100 percent/i)).toBeTruthy()
+  })
+
+  it('renders validation origins and categories separately', () => {
+    render(
+      <ValidationFindings findings={[
+        { finding_id: 'finding-1', origin: 'AI_EXTRACTION', category: 'REQUIRES_HUMAN_REVIEW', message: 'Test fixture requires review', field: 'Document number' },
+        { finding_id: 'finding-2', origin: 'RULE_BASED_VALIDATION', category: 'EXPIRED', message: 'Test fixture is expired', field: 'Expiry date' },
+      ]} />,
+    )
+    expect(screen.getByText('REQUIRES HUMAN REVIEW')).toBeTruthy()
+    expect(screen.getByText('AI EXTRACTION')).toBeTruthy()
+    expect(screen.getByText('RULE BASED VALIDATION')).toBeTruthy()
+    expect(screen.getByText('Test fixture requires review')).toBeTruthy()
+  })
+
+  it('validates human correction fields without saving', async () => {
+    const user = userEvent.setup()
+    render(<HumanVerificationPanel fields={[{ label: 'Full name', value: null }]} />)
+    await user.click(screen.getByRole('button', { name: 'Save correction (pending)' }))
+    expect(screen.getByText(/Complete all editable fields/i)).toBeTruthy()
+
+    await user.type(screen.getByLabelText('Full name'), 'Corrected Test Name')
+    await user.click(screen.getByRole('button', { name: 'Save correction (pending)' }))
+    expect(screen.getByText(/cannot be saved until an authorized backend endpoint/i)).toBeTruthy()
+  })
+
+  it('renders actual supplied processing timeline events and empty state', () => {
+    const { rerender } = render(<ProcessingTimeline />)
+    expect(screen.getByText('No processing history available')).toBeTruthy()
+
+    rerender(<ProcessingTimeline events={[
+      { event_id: 'event-1', type: 'DOCUMENT_UPLOADED', occurred_at: '2026-11-01T00:00:00Z', description: 'Test uploaded event' },
+      { event_id: 'event-2', type: 'HUMAN_VERIFICATION_COMPLETED', occurred_at: '2026-11-01T01:00:00Z' },
+    ]} />)
+    expect(screen.getByText('DOCUMENT UPLOADED')).toBeTruthy()
+    expect(screen.getByText('HUMAN VERIFICATION COMPLETED')).toBeTruthy()
+    expect(screen.getByText('Test uploaded event')).toBeTruthy()
+  })
+
+  it('renders an error state and the full disconnected AI foundation', () => {
+    render(<AiDocumentProcessing error="Unable to load proposed processing data." />)
+    expect(screen.getByRole('alert')).toBeTruthy()
+    expect(screen.getByText('Unable to load proposed processing data.')).toBeTruthy()
+    expect(screen.getByText('Extracted Information')).toBeTruthy()
+    expect(screen.getByText('Validation Findings')).toBeTruthy()
+    expect(screen.getByText('Human Verification')).toBeTruthy()
   })
 })

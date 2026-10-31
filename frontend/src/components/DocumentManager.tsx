@@ -2,6 +2,7 @@ import type { LoanDocument } from '../types'
 import { Alert } from './Alert'
 import { DocumentList } from './DocumentList'
 import { DocumentUploader } from './DocumentUploader'
+import { AiDocumentProcessing } from './AiDocumentProcessing'
 
 export interface DocumentManagerProps {
   applicationId: string
@@ -28,6 +29,7 @@ export function DocumentManager({
       <DocumentUploader applicationId={applicationId} upload={upload} />
       {error ? <Alert tone="error">{error}</Alert> : null}
       <DocumentList documents={documents} loading={loading} onDownload={onDownload} />
+      <AiDocumentProcessing />
     </div>
   )
 }
