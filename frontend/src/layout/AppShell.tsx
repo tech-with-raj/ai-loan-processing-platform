@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
 
 const navigation = [
   { label: 'Dashboard', path: '/', implemented: true },
@@ -15,8 +16,22 @@ const navigation = [
 
 export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 1024px)').matches
+      : false,
+  )
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mediaQuery = window.matchMedia('(max-width: 1024px)')
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches)
+    updateViewport()
+    mediaQuery.addEventListener('change', updateViewport)
+    return () => mediaQuery.removeEventListener('change', updateViewport)
+  }, [])
 
   useEffect(() => {
     if (!mobileOpen) return
@@ -25,7 +40,7 @@ export function AppShell() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMobileOpen(false)
-        menuButtonRef.current?.focus()
+        window.requestAnimationFrame(() => menuButtonRef.current?.focus())
       }
     }
     document.addEventListener('keydown', handleKeyDown)
@@ -38,6 +53,8 @@ export function AppShell() {
         ref={sidebarRef}
         id="mobile-navigation"
         className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}
+        aria-hidden={isMobileViewport && !mobileOpen ? true : undefined}
+        inert={isMobileViewport && !mobileOpen ? true : undefined}
       >
         <div className="brand-block">
           <div className="brand-mark" aria-hidden="true">B</div>
@@ -54,7 +71,12 @@ export function AppShell() {
               to={item.path}
               end={item.path === '/'}
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                if (isMobileViewport) {
+                  setMobileOpen(false)
+                  window.requestAnimationFrame(() => menuButtonRef.current?.focus())
+                }
+              }}
             >
               <span>{item.label}</span>
               {!item.implemented ? <span className="nav-status">Planned</span> : null}
@@ -78,7 +100,9 @@ export function AppShell() {
           <strong>BestBank</strong>
         </header>
         <main className="content">
-          <Outlet />
+          <RouteErrorBoundary>
+            <Outlet />
+          </RouteErrorBoundary>
         </main>
       </div>
     </div>

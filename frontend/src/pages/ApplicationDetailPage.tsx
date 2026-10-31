@@ -14,6 +14,9 @@ interface DetailState {
   applicationId: string | null
   application: LoanApplication | null
   customer: Customer | null
+  customerLoading: boolean
+  customerError: string
+  customerErrorStatus: number | null
   loading: boolean
   error: string
   errorStatus: number | null
@@ -23,6 +26,9 @@ const initialDetailState: DetailState = {
   applicationId: null,
   application: null,
   customer: null,
+  customerLoading: false,
+  customerError: '',
+  customerErrorStatus: null,
   loading: true,
   error: '',
   errorStatus: null,
@@ -33,7 +39,7 @@ const allowedTransitions: Record<LoanApplication['status'], LoanApplication['sta
   DOCUMENTS_PENDING: ['PROCESSING'],
   PROCESSING: ['VALIDATION'],
   VALIDATION: ['REVIEW'],
-  REVIEW: ['APPROVED', 'REJECTED'],
+  REVIEW: [],
   APPROVED: [],
   REJECTED: [],
 }
@@ -60,6 +66,7 @@ export function ApplicationDetailPage() {
   const { applicationId } = useParams()
   const { refresh } = useOperations()
   const [detail, setDetail] = useState<DetailState>(initialDetailState)
+  const [customerRetryKey, setCustomerRetryKey] = useState(0)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [statusError, setStatusError] = useState('')
   const statusControllerRef = useRef<AbortController | null>(null)
@@ -80,7 +87,10 @@ export function ApplicationDetailPage() {
           applicationId,
           application: applicationResult,
           customer: null,
-          loading: true,
+          customerLoading: true,
+          customerError: '',
+          customerErrorStatus: null,
+          loading: false,
           error: '',
           errorStatus: null,
         })
@@ -89,13 +99,22 @@ export function ApplicationDetailPage() {
           const customerResult = await api.getCustomer(applicationResult.customer_id, controller.signal)
           if (active && !controller.signal.aborted) {
             setDetail((current) => current.applicationId === applicationId
-              ? { ...current, customer: customerResult, loading: false }
+              ? { ...current, customer: customerResult, customerLoading: false, customerError: '', customerErrorStatus: null, loading: false }
               : current)
           }
         } catch (customerError) {
           if (active && !isAbortError(customerError)) {
             setDetail((current) => current.applicationId === applicationId
-              ? { ...current, customer: null, loading: false }
+              ? {
+                  ...current,
+                  customer: null,
+                  customerLoading: false,
+                  customerErrorStatus: customerError instanceof ApiError ? customerError.status : null,
+                  customerError: customerError instanceof Error
+                    ? customerError.message
+                    : 'Unable to load customer information.',
+                  loading: false,
+                }
               : current)
           }
         }
@@ -105,6 +124,9 @@ export function ApplicationDetailPage() {
           applicationId,
           application: null,
           customer: null,
+          customerLoading: false,
+          customerError: '',
+          customerErrorStatus: null,
           loading: false,
           errorStatus: loadError instanceof ApiError ? loadError.status : null,
           error: loadError instanceof Error ? loadError.message : 'Unable to load the application.',
@@ -118,17 +140,20 @@ export function ApplicationDetailPage() {
       controller.abort()
       statusControllerRef.current?.abort()
     }
-  }, [applicationId])
+  }, [applicationId, customerRetryKey])
 
   const currentDetail = detail.applicationId === applicationId ? detail : {
     applicationId,
     application: null,
     customer: null,
+    customerLoading: false,
+    customerError: '',
+    customerErrorStatus: null,
     loading: Boolean(applicationId),
     error: '',
     errorStatus: null,
   }
-  const { application, customer, loading, error, errorStatus } = currentDetail
+  const { application, customer, customerLoading, customerError, customerErrorStatus, loading, error, errorStatus } = currentDetail
   const detailError = errorStatus === 404
     ? 'Application not found.'
     : errorStatus === 401
@@ -183,13 +208,34 @@ export function ApplicationDetailPage() {
           <div className="detail-body-grid">
             <div>
               <h4>Customer Information</h4>
-              <ul className="detail-list">
-                <li><strong>Name:</strong> {customer?.name ?? 'Unknown customer'}</li>
-                <li><strong>Email:</strong> {customer?.email ?? 'Not available'}</li>
-                <li><strong>Phone:</strong> {customer?.phone ?? 'Not available'}</li>
-                <li><strong>Customer ID:</strong> {application.customer_id}</li>
-              </ul>
-              <Link className="secondary-button detail-link" to={`/customers/${application.customer_id}`}>View customer</Link>
+              {customerLoading ? (
+                <StateMessage>Loading customer information...</StateMessage>
+              ) : customerError ? (
+                <>
+                  <StateMessage tone="error">
+                    {customerErrorStatus === 404
+                      ? 'Customer record not found.'
+                      : `Customer information could not be loaded: ${customerError}`}
+                  </StateMessage>
+                  {customerErrorStatus !== 404 ? (
+                    <Button variant="secondary" onClick={() => setCustomerRetryKey((current) => current + 1)}>
+                      Retry customer information
+                    </Button>
+                  ) : null}
+                </>
+              ) : customer ? (
+                <>
+                  <ul className="detail-list">
+                    <li><strong>Name:</strong> {customer.name}</li>
+                    <li><strong>Email:</strong> {customer.email}</li>
+                    <li><strong>Phone:</strong> {customer.phone ?? 'Not provided'}</li>
+                    <li><strong>Customer ID:</strong> {customer.customer_id}</li>
+                  </ul>
+                  <Link className="secondary-button detail-link" to={`/customers/${customer.customer_id}`}>View customer</Link>
+                </>
+              ) : (
+                <StateMessage>Customer information is unavailable.</StateMessage>
+              )}
             </div>
             <div>
               <h4>Lifecycle</h4>
@@ -200,7 +246,16 @@ export function ApplicationDetailPage() {
                   </li>
                 ))}
               </ol>
-              {allowedTransitions[application.status].length > 0 ? (
+              {application.status === 'REVIEW' ? (
+                <div className="status-actions">
+                  <StateMessage>
+                    Consequential decisions are available only in the dedicated human review workspace.
+                  </StateMessage>
+                  <Link className="primary-button" to={`/applications/${application.application_id}/review`}>
+                    Open human review workspace
+                  </Link>
+                </div>
+              ) : allowedTransitions[application.status].length > 0 ? (
                 <div className="status-actions">
                   <span className="form-label">Supported next actions</span>
                   {allowedTransitions[application.status].map((status) => (

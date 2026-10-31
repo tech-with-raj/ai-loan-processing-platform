@@ -25,8 +25,28 @@ import { WorkflowExecutionTimeline } from '../components/WorkflowExecutionTimeli
 import { ToolExecutionDetails } from '../components/ToolExecutionDetails'
 import { PolicySafetyVisibility } from '../components/PolicySafetyVisibility'
 import { WorkflowControls } from '../components/WorkflowControls'
+import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
+import { MemoryRouter } from 'react-router-dom'
 
 describe('Shared design system components', () => {
+  it('renders a safe route error fallback and recovery action', () => {
+    function BrokenRoute(): never {
+      throw new Error('Sensitive rendering failure details')
+    }
+
+    render(
+      <MemoryRouter>
+        <RouteErrorBoundary>
+          <BrokenRoute />
+        </RouteErrorBoundary>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Unable to display this page' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reload page' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Return to dashboard' })).toBeTruthy()
+    expect(screen.queryByText(/Sensitive rendering failure details/i)).not.toBeTruthy()
+  })
   it('renders a button and handles interaction and disabled state', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn()

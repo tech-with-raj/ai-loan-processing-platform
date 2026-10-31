@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { OperationsProvider } from '../context/OperationsContext'
@@ -142,6 +143,57 @@ describe('Frontend pages', () => {
     expect(screen.getByText('Test Customer')).toBeTruthy()
   })
 
+  it('does not allow approve or reject actions from the general application detail', async () => {
+    const reviewApplication = { ...application, status: 'REVIEW' }
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith(`/applications/${reviewApplication.application_id}`)) return jsonResponse(200, reviewApplication)
+      if (url.endsWith(`/customers/${customer.customer_id}`)) return jsonResponse(200, customer)
+      if (url.includes('/applications')) return jsonResponse(200, [reviewApplication])
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+
+    render(
+      <MemoryRouter initialEntries={[`/applications/${reviewApplication.application_id}`]}>
+        <OperationsProvider>
+          <Routes>
+            <Route path="/applications/:applicationId" element={<ApplicationDetailPage />} />
+          </Routes>
+        </OperationsProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('link', { name: 'Open human review workspace' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Move to APPROVED/i })).not.toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Move to REJECTED/i })).not.toBeTruthy()
+  })
+
+  it('distinguishes a missing customer from a customer request failure and offers recovery', async () => {
+    const missingCustomerApplication = { ...application, customer_id: 'missing-customer' }
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith(`/applications/${missingCustomerApplication.application_id}`)) return jsonResponse(200, missingCustomerApplication)
+      if (url.includes('/customers/missing-customer')) return jsonResponse(404, { detail: 'Customer not found' })
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+
+    render(
+      <MemoryRouter initialEntries={[`/applications/${missingCustomerApplication.application_id}`]}>
+        <OperationsProvider>
+          <Routes>
+            <Route path="/applications/:applicationId" element={<ApplicationDetailPage />} />
+          </Routes>
+        </OperationsProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Customer record not found.')).toBeTruthy()
+    expect(screen.queryByText(/Unknown customer/i)).not.toBeTruthy()
+  })
+
   it('clears an old detail response when navigating between application IDs', async () => {
     const secondApplication = {
       ...application,
@@ -224,6 +276,44 @@ describe('Frontend pages', () => {
     expect(screen.getAllByText('Planned').length).toBeGreaterThan(0)
   })
 
+  it('keeps closed mobile navigation out of keyboard focus and restores focus on Escape', async () => {
+    const mediaQuery = {
+      matches: true,
+      media: '(max-width: 1024px)',
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }
+    vi.stubGlobal('matchMedia', vi.fn(() => mediaQuery))
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route index element={<div>Dashboard screen</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const sidebar = container.querySelector('#mobile-navigation')
+    const menuButton = screen.getByRole('button', { name: 'Menu' })
+    expect(sidebar?.hasAttribute('inert')).toBe(true)
+    expect(sidebar?.getAttribute('aria-hidden')).toBe('true')
+
+    await userEvent.click(menuButton)
+    expect(menuButton.getAttribute('aria-expanded')).toBe('true')
+    expect(sidebar?.hasAttribute('inert')).toBe(false)
+    expect(sidebar?.hasAttribute('aria-hidden')).toBe(false)
+
+    await userEvent.keyboard('{Escape}')
+    expect(menuButton.getAttribute('aria-expanded')).toBe('false')
+    await waitFor(() => expect(document.activeElement).toBe(menuButton))
+  })
+
   it('renders the review queue empty state without inferred reviewer assignment', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -279,6 +369,38 @@ describe('Frontend pages', () => {
     expect(screen.getByText(/Human Review Notes/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Request additional information/i }).hasAttribute('disabled')).toBe(true)
+  })
+
+  it('keeps review customer request failures distinct and retries customer loading', async () => {
+    const reviewApplication = { ...application, status: 'REVIEW' }
+    let customerRequestCount = 0
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith(`/applications/${reviewApplication.application_id}`)) return jsonResponse(200, reviewApplication)
+      if (url.endsWith(`/customers/${customer.customer_id}`)) {
+        customerRequestCount += 1
+        if (customerRequestCount === 1) return jsonResponse(503, { detail: 'Customer service unavailable' })
+        return jsonResponse(200, customer)
+      }
+      if (url.includes('/applications')) return jsonResponse(200, [reviewApplication])
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+
+    render(
+      <MemoryRouter initialEntries={[`/applications/${reviewApplication.application_id}/review`]}>
+        <OperationsProvider>
+          <Routes>
+            <Route path="/applications/:applicationId/review" element={<ApplicationReviewWorkspacePage />} />
+          </Routes>
+        </OperationsProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText(/Customer information could not be loaded: Customer service unavailable/i)).toBeTruthy()
+    expect(screen.queryByText(/Unknown customer/i)).not.toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Retry customer information' }))
+    expect(await screen.findByText('Test Customer')).toBeTruthy()
   })
 
   it('persists a confirmed decision only through the backend status endpoint', async () => {

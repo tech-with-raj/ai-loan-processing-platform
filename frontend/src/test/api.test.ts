@@ -93,16 +93,15 @@ describe('API client', () => {
     })
   })
 
-  it('reports a document upload HTTP failure safely', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(422, {
-      detail: [{ msg: 'file: unsupported media type' }],
-    })))
-
+  it('reports document upload as integration unavailable without making a request', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
     await expect(api.uploadDocument('a1', new File(['pdf'], 'statement.pdf', { type: 'application/pdf' })))
       .rejects.toMatchObject({
-        status: 422,
-        message: expect.stringContaining('unsupported media type'),
+        status: 501,
+        message: expect.stringContaining('pending backend integration'),
       })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('keeps proposed AI processing methods explicitly disconnected', async () => {

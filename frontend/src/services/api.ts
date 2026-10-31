@@ -124,16 +124,13 @@ export const api = {
     Promise.reject<LoanDocument[]>(
       new ApiError('Document listing is pending backend integration.', 501),
     ),
-  uploadDocument: (applicationId: string, file: File, signal?: AbortSignal) => {
-    const formData = new FormData()
-    formData.append('file', file, file.name)
-    return request<LoanDocument>(`/applications/${applicationId}/documents`, {
-      method: 'POST',
-      body: formData,
-      signal,
-      headers: {},
-    })
-  },
+  uploadDocument: (applicationId: string, _file: File, _signal?: AbortSignal) =>
+    Promise.reject<LoanDocument>(
+      new ApiError(
+        `Document upload is pending backend integration for application ${applicationId}.`,
+        501,
+      ),
+    ),
   downloadDocument: (_applicationId: string, _documentId: string) =>
     Promise.reject(
       new ApiError('Authorized document download is pending backend integration.', 501),

@@ -11,13 +11,19 @@ import { AiDocumentProcessing } from '../components/AiDocumentProcessing'
 import { DocumentList } from '../components/DocumentList'
 import { useOperations } from '../hooks/useOperations'
 import { api, isAbortError } from '../services/api'
+import { ApiError } from '../services/api'
 import type { Customer, LoanApplication } from '../types'
+import { Button } from '../components/Button'
 
 export function ApplicationReviewWorkspacePage() {
   const { applicationId } = useParams()
   const { refresh } = useOperations()
   const [application, setApplication] = useState<LoanApplication | null>(null)
   const [customer, setCustomer] = useState<Customer | null>(null)
+  const [customerLoading, setCustomerLoading] = useState(false)
+  const [customerError, setCustomerError] = useState('')
+  const [customerErrorStatus, setCustomerErrorStatus] = useState<number | null>(null)
+  const [customerRetryKey, setCustomerRetryKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [decisionSubmitting, setDecisionSubmitting] = useState(false)
@@ -35,6 +41,9 @@ export function ApplicationReviewWorkspacePage() {
       setError('')
       setApplication(null)
       setCustomer(null)
+      setCustomerLoading(false)
+      setCustomerError('')
+      setCustomerErrorStatus(null)
     })
 
     void (async () => {
@@ -42,11 +51,25 @@ export function ApplicationReviewWorkspacePage() {
         const applicationResult = await api.getApplication(applicationId, controller.signal)
         if (!active || controller.signal.aborted) return
         setApplication(applicationResult)
+        setLoading(false)
+        setCustomerLoading(true)
         try {
           const customerResult = await api.getCustomer(applicationResult.customer_id, controller.signal)
-          if (active && !controller.signal.aborted) setCustomer(customerResult)
+          if (active && !controller.signal.aborted) {
+            setCustomer(customerResult)
+            setCustomerLoading(false)
+            setCustomerError('')
+            setCustomerErrorStatus(null)
+          }
         } catch (customerError) {
-          if (active && !isAbortError(customerError)) setCustomer(null)
+          if (active && !isAbortError(customerError)) {
+            setCustomer(null)
+            setCustomerLoading(false)
+            setCustomerErrorStatus(customerError instanceof ApiError ? customerError.status : null)
+            setCustomerError(customerError instanceof Error
+              ? customerError.message
+              : 'Unable to load customer information.')
+          }
         }
       } catch (loadError) {
         if (!active || isAbortError(loadError) || controller.signal.aborted) return
@@ -61,7 +84,7 @@ export function ApplicationReviewWorkspacePage() {
       controller.abort()
       decisionControllerRef.current?.abort()
     }
-  }, [applicationId])
+  }, [applicationId, customerRetryKey])
 
   const submitDecision = async (status: 'APPROVED' | 'REJECTED') => {
     if (!application || application.status !== 'REVIEW' || decisionSubmitting) return
@@ -102,7 +125,28 @@ export function ApplicationReviewWorkspacePage() {
           <Card title={<h3>Application Overview</h3>} className="review-overview-card">
             <dl className="review-overview">
               <div><dt>Application ID</dt><dd>{application.application_id}</dd></div>
-              <div><dt>Customer</dt><dd>{customer?.name ?? 'Unknown customer'}</dd></div>
+              <div>
+                <dt>Customer</dt>
+                <dd>
+                  {customerLoading ? (
+                    'Loading customer information...'
+                  ) : customerError ? (
+                    <span>
+                      {customerErrorStatus === 404
+                        ? 'Customer record not found.'
+                        : `Customer information could not be loaded: ${customerError}`}
+                      {customerErrorStatus !== 404 ? (
+                        <Button
+                          variant="secondary"
+                          onClick={() => setCustomerRetryKey((current) => current + 1)}
+                        >
+                          Retry customer information
+                        </Button>
+                      ) : null}
+                    </span>
+                  ) : customer ? customer.name : 'Customer information is unavailable.'}
+                </dd>
+              </div>
               <div><dt>Loan amount</dt><dd>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(application.loan_amount))}</dd></div>
               <div><dt>Loan purpose</dt><dd>{application.loan_type}</dd></div>
               <div><dt>Application status</dt><dd><StatusBadge status={application.status} /></dd></div>
