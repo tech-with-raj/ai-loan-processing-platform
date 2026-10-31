@@ -46,3 +46,21 @@ export interface PaginationQuery {
   limit?: number
   offset?: number
 }
+
+export type DocumentStatus =
+  | 'MISSING'
+  | 'UPLOADED'
+  | 'PROCESSING'
+  | 'PROCESSED'
+  | 'VALIDATION_REQUIRED'
+  | 'VALID'
+  | 'INVALID'
+
+export interface LoanDocument {
+  document_id: string
+  application_id: string
+  original_filename: string
+  content_type: string
+  status: DocumentStatus
+  created_at: string
+}

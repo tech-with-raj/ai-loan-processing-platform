@@ -5,6 +5,7 @@ import type {
   LoanApplication,
   PaginationQuery,
   UpdateApplicationStatusInput,
+  LoanDocument,
 } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -26,14 +27,20 @@ export function isAbortError(error: unknown) {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   let response: Response
+  const multipartBody = options?.body instanceof FormData
+  const providedHeaders = options?.headers instanceof Headers
+    ? Object.fromEntries(options.headers.entries())
+    : options?.headers && !(options.headers instanceof Array)
+      ? options.headers as Record<string, string>
+      : {}
 
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
         ...(API_KEY ? { 'X-API-Key': API_KEY } : {}),
-        ...(options?.headers ?? {}),
+        ...(!multipartBody ? { 'Content-Type': 'application/json' } : {}),
+        ...providedHeaders,
       },
     })
   } catch (error) {
@@ -113,4 +120,22 @@ export const api = {
       body: JSON.stringify(payload),
       signal,
     }),
+  getDocuments: (_applicationId: string, _signal?: AbortSignal) =>
+    Promise.reject<LoanDocument[]>(
+      new ApiError('Document listing is pending backend integration.', 501),
+    ),
+  uploadDocument: (applicationId: string, file: File, signal?: AbortSignal) => {
+    const formData = new FormData()
+    formData.append('file', file, file.name)
+    return request<LoanDocument>(`/applications/${applicationId}/documents`, {
+      method: 'POST',
+      body: formData,
+      signal,
+      headers: {},
+    })
+  },
+  downloadDocument: (_applicationId: string, _documentId: string) =>
+    Promise.reject(
+      new ApiError('Authorized document download is pending backend integration.', 501),
+    ),
 }

@@ -5,6 +5,7 @@ import { PageHeader } from '../components/PageHeader'
 import { StateMessage } from '../components/StateMessage'
 import { StatusBadge } from '../components/StatusBadge'
 import { Button } from '../components/Button'
+import { DocumentManager } from '../components/DocumentManager'
 import { useOperations } from '../hooks/useOperations'
 import { ApiError, api, isAbortError } from '../services/api'
 import type { Customer, LoanApplication } from '../types'
@@ -217,7 +218,7 @@ export function ApplicationDetailPage() {
         </Card>
         <div className="detail-support-grid">
           <Card title={<h3>Documents</h3>}>
-            <StateMessage>Document management is not implemented by the backend yet. No document records are available.</StateMessage>
+            <DocumentManager applicationId={application.application_id} />
           </Card>
           <Card title={<h3>Activity and History</h3>}>
             <StateMessage>Activity and audit history are not implemented by the backend yet. Status changes are recorded only by the database application status.</StateMessage>

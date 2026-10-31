@@ -81,4 +81,27 @@ describe('API client', () => {
     await expect(api.updateApplicationStatus('a1', { status: 'DOCUMENTS_PENDING' }))
       .resolves.toMatchObject({ status: 'DOCUMENTS_PENDING' })
   })
+
+  it('does not claim document listing or download success while integration is pending', async () => {
+    await expect(api.getDocuments('a1')).rejects.toMatchObject({
+      status: 501,
+      message: expect.stringContaining('pending backend integration'),
+    })
+    await expect(api.downloadDocument('a1', 'd1')).rejects.toMatchObject({
+      status: 501,
+      message: expect.stringContaining('pending backend integration'),
+    })
+  })
+
+  it('reports a document upload HTTP failure safely', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(422, {
+      detail: [{ msg: 'file: unsupported media type' }],
+    })))
+
+    await expect(api.uploadDocument('a1', new File(['pdf'], 'statement.pdf', { type: 'application/pdf' })))
+      .rejects.toMatchObject({
+        status: 422,
+        message: expect.stringContaining('unsupported media type'),
+      })
+  })
 })
