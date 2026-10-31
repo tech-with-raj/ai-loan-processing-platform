@@ -18,6 +18,9 @@ import { AiDocumentProcessing } from '../components/AiDocumentProcessing'
 import { DocumentList } from '../components/DocumentList'
 import { DocumentStatusBadge } from '../components/DocumentStatusBadge'
 import { DocumentManager } from '../components/DocumentManager'
+import { HumanDecisionPanel } from '../components/HumanDecisionPanel'
+import { HumanReviewNotes } from '../components/HumanReviewNotes'
+import { ReviewHistory } from '../components/ReviewHistory'
 
 describe('Shared design system components', () => {
   it('renders a button and handles interaction and disabled state', async () => {
@@ -257,5 +260,50 @@ describe('AI document processing components', () => {
     expect(screen.getByText('Extracted Information')).toBeTruthy()
     expect(screen.getByText('Validation Findings')).toBeTruthy()
     expect(screen.getByText('Human Verification')).toBeTruthy()
+  })
+})
+
+describe('Human review components', () => {
+  it('renders human decisions separately from advisory AI guidance', () => {
+    render(
+      <HumanDecisionPanel
+        applicationStatus="CREATED"
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/Human decision authority/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Approve' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('button', { name: /Request additional information/i }).hasAttribute('disabled')).toBe(true)
+    expect(screen.queryByText(/approved successfully/i)).not.toBeTruthy()
+  })
+
+  it('requires decision confirmation before a connected callback runs', async () => {
+    const user = userEvent.setup()
+    const onApprove = vi.fn().mockResolvedValue(undefined)
+    render(
+      <HumanDecisionPanel
+        applicationStatus="REVIEW"
+        onApprove={onApprove}
+        onReject={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onApprove).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Confirm approve' }))
+    expect(onApprove).toHaveBeenCalledOnce()
+  })
+
+  it('shows review notes and audit integration as disconnected', () => {
+    render(
+      <>
+        <HumanReviewNotes />
+        <ReviewHistory />
+      </>,
+    )
+    expect(screen.getByRole('button', { name: /Save review notes/i }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByText(/Review-note persistence is not connected/i)).toBeTruthy()
+    expect(screen.getByText(/Review audit history pending/i)).toBeTruthy()
   })
 })

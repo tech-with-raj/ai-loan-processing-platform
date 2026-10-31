@@ -10,6 +10,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { DisconnectedPage } from './pages/DisconnectedPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { HumanReviewQueuePage } from './pages/HumanReviewQueuePage'
+import { ApplicationReviewWorkspacePage } from './pages/ApplicationReviewWorkspacePage'
 
 function AppRoutes() {
   return (
@@ -33,14 +35,9 @@ function AppRoutes() {
           />
           <Route
             path="review"
-            element={
-              <DisconnectedPage
-                eyebrow="Human oversight"
-                title="Review Queue"
-                description="The review queue is planned and intentionally disconnected until backend review assignments and authorized decisions are available."
-              />
-            }
+            element={<HumanReviewQueuePage />}
           />
+          <Route path="applications/:applicationId/review" element={<ApplicationReviewWorkspacePage />} />
           <Route
             path="ai-insights"
             element={

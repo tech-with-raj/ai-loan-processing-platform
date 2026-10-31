@@ -6,7 +6,7 @@ const navigation = [
   { label: 'Customers', path: '/customers', implemented: true },
   { label: 'Loan Applications', path: '/applications', implemented: true },
   { label: 'Documents', path: '/documents', implemented: false },
-  { label: 'Review Queue', path: '/review', implemented: false },
+  { label: 'Review Queue', path: '/review', implemented: true },
   { label: 'AI Insights', path: '/ai-insights', implemented: false },
   { label: 'Activity & Audit', path: '/activity', implemented: false },
   { label: 'Settings', path: '/settings', implemented: true },
