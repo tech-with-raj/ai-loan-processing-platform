@@ -3,7 +3,7 @@ import { Alert } from './Alert'
 
 interface StateMessageProps {
   children: ReactNode
-  tone?: 'info' | 'error' | 'success'
+  tone?: 'info' | 'error' | 'success' | 'warning'
 }
 
 export function StateMessage({ children, tone = 'info' }: StateMessageProps) {

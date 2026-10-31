@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Alert } from './Alert'
 import { Button } from './Button'
 
@@ -20,12 +20,24 @@ export function HumanDecisionPanel({
   onReject,
 }: HumanDecisionPanelProps) {
   const [pendingDecision, setPendingDecision] = useState<'APPROVE' | 'REJECT' | null>(null)
+  const [confirmationPending, setConfirmationPending] = useState(false)
+  const confirmationSubmittingRef = useRef(false)
 
   const confirm = async () => {
     if (!pendingDecision) return
-    if (pendingDecision === 'APPROVE') await onApprove?.()
-    if (pendingDecision === 'REJECT') await onReject?.()
-    setPendingDecision(null)
+    if (confirmationSubmittingRef.current) return
+    confirmationSubmittingRef.current = true
+    setConfirmationPending(true)
+    try {
+      if (pendingDecision === 'APPROVE') await onApprove?.()
+      if (pendingDecision === 'REJECT') await onReject?.()
+    } catch {
+      // Parent mutation handlers surface the operation-specific error.
+    } finally {
+      confirmationSubmittingRef.current = false
+      setConfirmationPending(false)
+      setPendingDecision(null)
+    }
   }
 
   const connected = applicationStatus === 'REVIEW' && Boolean(onApprove && onReject)
@@ -73,12 +85,13 @@ export function HumanDecisionPanel({
           <div className="decision-actions">
             <Button
               type="button"
-              disabled={submitting}
+              disabled={submitting || confirmationPending}
+              aria-busy={submitting || confirmationPending}
               onClick={() => void confirm()}
             >
-              {submitting ? 'Submitting...' : `Confirm ${pendingDecision.toLowerCase()}`}
+              {submitting || confirmationPending ? 'Submitting...' : `Confirm ${pendingDecision.toLowerCase()}`}
             </Button>
-            <Button type="button" variant="secondary" disabled={submitting} onClick={() => setPendingDecision(null)}>
+            <Button type="button" variant="secondary" disabled={submitting || confirmationPending} onClick={() => setPendingDecision(null)}>
               Cancel
             </Button>
           </div>

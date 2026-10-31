@@ -6,6 +6,25 @@
   color: #14213d;
 }
 
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 12px;
+  left: 12px;
+  transform: translateY(-160%);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .sidebar {
   background: #0f172a;
   color: #e2e8f0;
@@ -69,6 +88,11 @@
 .nav-item:hover {
   background: rgba(59, 130, 246, 0.14);
   color: #ffffff;
+}
+
+.nav-item:focus-visible {
+  outline-color: #93c5fd;
+  outline-offset: 2px;
 }
 
 .nav-status {
@@ -159,6 +183,19 @@
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.button:focus-visible,
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.link-button:focus-visible,
+.form-control:focus-visible,
+.search-field input:focus-visible,
+.nav-item:focus-visible,
+table button:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+  border-color: var(--color-focus);
 }
 
 .button-full {
@@ -299,11 +336,18 @@ textarea.form-control {
   color: var(--color-text-muted);
 }
 
+.empty-state-action {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
 .loading-indicator {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   color: var(--color-text-muted);
+  min-height: 72px;
 }
 
 .spinner {
@@ -335,6 +379,10 @@ textarea.form-control {
 
 .content {
   padding: 32px;
+}
+
+.content:focus {
+  outline: none;
 }
 
 .topbar {

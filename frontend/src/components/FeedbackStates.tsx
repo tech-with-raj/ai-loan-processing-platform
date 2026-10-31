@@ -4,7 +4,7 @@ import { Button } from './Button'
 
 export function LoadingIndicator({ children = 'Loading...' }: { children?: ReactNode }) {
   return (
-    <div className="loading-indicator" role="status" aria-live="polite">
+    <div className="loading-indicator" role="status" aria-live="polite" aria-atomic="true">
       <span className="spinner" aria-hidden="true" />
       <span>{children}</span>
     </div>
@@ -15,11 +15,12 @@ export function Skeleton({ className = '' }: { className?: string }) {
   return <span className={`skeleton ${className}`} aria-hidden="true" />
 }
 
-export function EmptyState({ title = 'No data available', children }: { title?: string; children?: ReactNode }) {
+export function EmptyState({ title = 'No data available', children, action }: { title?: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="empty-state">
       <strong>{title}</strong>
       {children ? <div>{children}</div> : null}
+      {action ? <div className="empty-state-action">{action}</div> : null}
     </div>
   )
 }

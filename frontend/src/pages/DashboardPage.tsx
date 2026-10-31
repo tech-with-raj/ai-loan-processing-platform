@@ -1,14 +1,23 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
-import { StateMessage } from '../components/StateMessage'
 import { ApplicationTable } from '../components/ApplicationTable'
 import { Card } from '../components/Card'
 import { SearchInput } from '../components/SearchInput'
 import { useOperations } from '../hooks/useOperations'
+import { EmptyState, LoadingIndicator, ErrorState } from '../components/FeedbackStates'
+import { StateMessage } from '../components/StateMessage'
 
 export function DashboardPage() {
-  const { applications, customers, applicationsLoading, applicationsError } = useOperations()
+  const {
+    applications,
+    customers,
+    applicationsLoading,
+    applicationsError,
+    applicationsLoaded,
+    applicationsStale,
+    refresh,
+  } = useOperations()
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
 
@@ -58,8 +67,18 @@ export function DashboardPage() {
       </section>
 
       <Card className="status-distribution-card" title={<h3>Loaded Application Status Distribution</h3>}>
-        {statusDistribution.length === 0 ? (
-          <StateMessage>No loaded applications are available.</StateMessage>
+        {applicationsLoading ? (
+          <LoadingIndicator>Loading application summary...</LoadingIndicator>
+        ) : applicationsError && !applicationsLoaded ? (
+          <ErrorState title="Application summary unavailable" onRetry={() => void refresh()}>
+            {applicationsError}
+          </ErrorState>
+        ) : applicationsError && applicationsStale ? (
+          <ErrorState title="Application summary may be stale" onRetry={() => void refresh()}>
+            The previously loaded summary could not be refreshed.
+          </ErrorState>
+        ) : statusDistribution.length === 0 ? (
+          <EmptyState title="No loaded applications">Create a loan application to begin tracking it here.</EmptyState>
         ) : (
           <div className="status-distribution" aria-label="Status distribution from loaded applications">
             {statusDistribution.map((item) => (
@@ -88,11 +107,40 @@ export function DashboardPage() {
       >
 
         {applicationsLoading ? (
-          <StateMessage>Loading applications...</StateMessage>
-        ) : applicationsError ? (
-          <StateMessage tone="error">{applicationsError}</StateMessage>
+          <LoadingIndicator>Loading recent applications...</LoadingIndicator>
+        ) : applicationsError && !applicationsLoaded ? (
+          <EmptyState title="Recent applications unavailable">
+            The application list could not be loaded.
+          </EmptyState>
+        ) : applicationsError && applicationsStale ? (
+          <>
+            <StateMessage tone="warning">
+              Showing previously loaded applications. These results may be stale because the refresh failed.
+            </StateMessage>
+            {applications.length === 0 ? (
+              <EmptyState title="No previously loaded applications">
+                A successful refresh is required before this list is confirmed empty.
+              </EmptyState>
+            ) : (
+              <ApplicationTable
+                applications={applications}
+                customers={customers}
+                maxRows={8}
+                onSelect={(applicationId) => navigate(`/applications/${applicationId}`)}
+              />
+            )}
+          </>
+        ) : applications.length === 0 && query.trim() === '' ? (
+          <EmptyState
+            title="No applications yet"
+            action={<Link className="primary-button" to="/applications">Create application</Link>}
+          >
+            Submit the first loan application to see it here.
+          </EmptyState>
         ) : filteredApplications.length === 0 ? (
-          <StateMessage>No applications match your current filter.</StateMessage>
+          <EmptyState title="No applications match your search">
+            Try a customer name, application ID, loan type, or status.
+          </EmptyState>
         ) : (
           <ApplicationTable
             applications={filteredApplications}

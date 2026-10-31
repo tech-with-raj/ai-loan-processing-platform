@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApplicationTable } from '../components/ApplicationTable'
 import { Button } from '../components/Button'
@@ -10,6 +10,7 @@ import { Pagination } from '../components/Pagination'
 import { StateMessage } from '../components/StateMessage'
 import { useOperations } from '../hooks/useOperations'
 import { api } from '../services/api'
+import { EmptyState, LoadingIndicator, ErrorState } from '../components/FeedbackStates'
 import type { CreateApplicationInput, LoanApplication } from '../types'
 
 const initialForm: CreateApplicationInput = {
@@ -28,16 +29,19 @@ function ApplicationForm() {
   const navigate = useNavigate()
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState<LoanApplication | null>(null)
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (submittingRef.current) return
     if (!form.customer_id || !form.loan_type || !form.loan_amount) {
       setError('Please complete all required fields.')
       return
     }
 
+    submittingRef.current = true
     setSubmitting(true)
     setError('')
     try {
@@ -45,10 +49,11 @@ function ApplicationForm() {
       setCreated(application)
       setForm(initialForm)
       await refresh()
-      navigate(`/applications/${application.application_id}`)
+      navigate(`/applications/${application.application_id}`, { state: { created: true } })
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Unable to create the application.')
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
   }
@@ -60,9 +65,13 @@ function ApplicationForm() {
         {customersLoading ? (
           <select className="form-control" disabled aria-label="Customer"><option>Loading customers...</option></select>
         ) : customersError ? (
-          <StateMessage tone="error">{customersError}</StateMessage>
+          <ErrorState title="Customers unavailable" onRetry={() => void refresh()}>
+            {customersError}
+          </ErrorState>
         ) : customers.length === 0 ? (
-          <StateMessage>No customers are available. Create a customer first.</StateMessage>
+          <EmptyState title="Create a customer first">
+            A customer is required before a loan application can be submitted.
+          </EmptyState>
         ) : (
           <Select
             label="Customer"
@@ -102,8 +111,9 @@ function ApplicationForm() {
         fullWidth
         type="submit"
         disabled={submitting || customersLoading || Boolean(customersError) || customers.length === 0}
+        aria-busy={submitting}
       >
-        {submitting ? 'Submitting...' : 'Submit application'}
+        {submitting ? 'Submitting application...' : 'Submit application'}
       </Button>
     </form>
   )
@@ -116,6 +126,7 @@ export function ApplicationsPage() {
     customers,
     applicationsLoading,
     applicationsError,
+    refresh,
   } = useOperations()
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -196,11 +207,21 @@ export function ApplicationsPage() {
             </Select>
           </div>
           {applicationsLoading ? (
-            <StateMessage>Loading applications...</StateMessage>
+            <LoadingIndicator>Loading loan applications...</LoadingIndicator>
           ) : applicationsError ? (
-            <StateMessage tone="error">{applicationsError}</StateMessage>
+            <ErrorState title="Loan applications unavailable" onRetry={() => void refresh()}>
+              {applicationsError}
+            </ErrorState>
+          ) : applications.length === 0 && query.trim() === '' && statusFilter === 'ALL' && loanTypeFilter === 'ALL' ? (
+            <EmptyState
+              title="No loan applications yet"
+            >
+              Create a customer if needed, then submit the first loan application.
+            </EmptyState>
           ) : visible.length === 0 ? (
-            <StateMessage>No applications match your current filter.</StateMessage>
+            <EmptyState title="No applications match your current filter.">
+              Adjust the search, status, loan type, or sorting criteria.
+            </EmptyState>
           ) : (
             <>
               <ApplicationTable

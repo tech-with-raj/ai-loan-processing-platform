@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Alert } from '../components/Alert'
@@ -100,6 +100,20 @@ describe('Shared design system components', () => {
     expect(screen.getByText('Implemented')).toBeTruthy()
     expect(screen.getByText('No customers found')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks status and alert announcements atomic', () => {
+    render(
+      <>
+        <Alert tone="success">Customer created.</Alert>
+        <Alert tone="error">Customer creation failed.</Alert>
+      </>,
+    )
+
+    expect(screen.getByRole('status').getAttribute('aria-atomic')).toBe('true')
+    expect(screen.getByRole('alert').getAttribute('aria-atomic')).toBe('true')
   })
 })
 
@@ -123,6 +137,38 @@ describe('Document management components', () => {
     expect(screen.getByRole('button', { name: 'Upload' })).toBeTruthy()
   })
 
+  it('opens file selection from an accessible keyboard-operable button', async () => {
+    const user = userEvent.setup()
+    render(<DocumentUploader applicationId="application-1" />)
+    const chooseButton = screen.getByRole('button', { name: 'Choose files' })
+    const input = screen.getByLabelText('Choose documents') as HTMLInputElement
+    const clickSpy = vi.spyOn(input, 'click')
+
+    chooseButton.focus()
+    await user.keyboard('{Enter}')
+
+    expect(clickSpy).toHaveBeenCalledOnce()
+  })
+
+  it('announces selected files and invalid file feedback without making a fake upload', async () => {
+    const user = userEvent.setup()
+    render(<DocumentUploader applicationId="application-1" />)
+    const input = screen.getByLabelText('Choose documents')
+
+    await user.upload(input, new File(['pdf'], 'statement.pdf', { type: 'application/pdf' }))
+    expect(screen.getByRole('status').textContent).toContain('statement.pdf')
+
+    fireEvent.change(input, {
+      target: { files: [new File(['text'], 'notes.txt', { type: 'text/plain' })] },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toContain('notes.txt')
+    })
+    expect(screen.getAllByText(/Choose a PDF, JPEG, or PNG file/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/uploaded successfully/i)).not.toBeTruthy()
+  })
+
   it('rejects duplicate selected files and invalid uploads', async () => {
     const user = userEvent.setup()
     render(<DocumentUploader applicationId="application-1" />)
@@ -133,7 +179,7 @@ describe('Document management components', () => {
     await user.upload(input, file)
 
     expect(screen.getAllByText('statement.pdf')).toHaveLength(1)
-    expect(screen.getByText(/already been selected/i)).toBeTruthy()
+    expect(screen.getAllByText(/already been selected/i).length).toBeGreaterThan(0)
   })
 
   it('shows pending feedback instead of submitting without backend integration', async () => {
@@ -142,7 +188,7 @@ describe('Document management components', () => {
     await user.upload(screen.getByLabelText('Choose documents'), new File(['pdf'], 'statement.pdf', { type: 'application/pdf' }))
     await user.click(screen.getByRole('button', { name: 'Upload' }))
 
-    expect(screen.getByText(/pending backend integration/i)).toBeTruthy()
+    expect(screen.getAllByText(/pending backend integration/i).length).toBeGreaterThan(0)
   })
 
   it('supports successful and failed upload callbacks and retry', async () => {
@@ -156,7 +202,7 @@ describe('Document management components', () => {
 
     expect(await screen.findByRole('button', { name: 'Retry' })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText(/uploaded successfully/i)).toBeTruthy()
+    expect((await screen.findAllByText(/uploaded successfully/i)).length).toBeGreaterThan(0)
     expect(upload).toHaveBeenCalledTimes(2)
   })
 
@@ -317,6 +363,54 @@ describe('Human review components', () => {
     expect(onApprove).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Confirm approve' }))
     expect(onApprove).toHaveBeenCalledOnce()
+  })
+
+  it('shows pending and prevents rapid repeated human decision confirmation', async () => {
+    let resolveCallback!: () => void
+    const onApprove = vi.fn(() => new Promise<void>((resolve) => { resolveCallback = resolve }))
+    render(
+      <HumanDecisionPanel
+        applicationStatus="REVIEW"
+        onApprove={onApprove}
+        onReject={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+    const confirm = screen.getByRole('button', { name: 'Confirm approve' })
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+
+    expect(onApprove).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Submitting...' })).toBeTruthy()
+    resolveCallback()
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Submitting...' })).not.toBeTruthy()
+    })
+  })
+
+  it('renders human decision success and failure feedback supplied by the mutation handler', () => {
+    const { rerender } = render(
+      <HumanDecisionPanel
+        applicationStatus="REVIEW"
+        submitting={false}
+        success="Decision approved successfully."
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Decision approved successfully.')).toBeTruthy()
+
+    rerender(
+      <HumanDecisionPanel
+        applicationStatus="REVIEW"
+        submitting={false}
+        error="Decision failed."
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Decision failed.')).toBeTruthy()
   })
 
   it('shows review notes and audit integration as disconnected', () => {

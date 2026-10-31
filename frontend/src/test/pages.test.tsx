@@ -13,6 +13,7 @@ import { HumanReviewQueuePage } from '../pages/HumanReviewQueuePage'
 import { ApplicationReviewWorkspacePage } from '../pages/ApplicationReviewWorkspacePage'
 import { AgentOperationsPage } from '../pages/AgentOperationsPage'
 import { WorkflowExecutionPage } from '../pages/WorkflowExecutionPage'
+import { useOperations } from '../hooks/useOperations'
 
 const customer = {
   customer_id: '11111111-1111-4111-8111-111111111111',
@@ -38,6 +39,16 @@ function jsonResponse(status: number, body: unknown) {
   })
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
 function mockOperations() {
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
@@ -56,6 +67,11 @@ function renderWithOperations(ui: React.ReactNode, route = '/') {
       <OperationsProvider>{ui}</OperationsProvider>
     </MemoryRouter>,
   )
+}
+
+function DashboardRefreshControls() {
+  const { refresh } = useOperations()
+  return <button type="button" onClick={() => void refresh()}>Refresh dashboard data</button>
 }
 
 describe('Frontend pages', () => {
@@ -94,20 +110,55 @@ describe('Frontend pages', () => {
   })
 
   it('creates a customer and refreshes the directory', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith('/customers') && init?.method === 'POST') return jsonResponse(201, customer)
       if (url.endsWith('/customers')) return jsonResponse(200, [customer])
       if (url.includes('/applications')) return jsonResponse(200, [])
       return jsonResponse(404, { detail: 'Not found' })
-    }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
     renderWithOperations(<CustomersPage />, '/customers')
 
     fireEvent.change(await screen.findByLabelText('Full Name'), { target: { value: 'Test Customer' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create customer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Creating customer...' }))
 
     expect(await screen.findByText(/Customer Test Customer created successfully/i)).toBeTruthy()
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1)
+  })
+
+  it('allows only one rapid customer POST and preserves failed submission values', async () => {
+    const post = deferred<Response>()
+    let postCount = 0
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/customers') && init?.method === 'POST') {
+        postCount += 1
+        return post.promise
+      }
+      if (url.endsWith('/customers')) return jsonResponse(200, [])
+      if (url.includes('/applications')) return jsonResponse(200, [])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    renderWithOperations(<CustomersPage />, '/customers')
+
+    fireEvent.change(await screen.findByLabelText('Full Name'), { target: { value: 'Rapid Customer' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'rapid@example.com' } })
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '555-0100' } })
+    const submit = screen.getByRole('button', { name: 'Create customer' })
+    fireEvent.click(submit)
+    fireEvent.click(submit)
+
+    expect(postCount).toBe(1)
+    expect(await screen.findByRole('button', { name: 'Creating customer...' })).toBeTruthy()
+
+    post.resolve(jsonResponse(500, { detail: 'Customer creation failed' }))
+    expect(await screen.findByText('Customer creation failed')).toBeTruthy()
+    expect((screen.getByLabelText('Full Name') as HTMLInputElement).value).toBe('Rapid Customer')
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('rapid@example.com')
+    expect((screen.getByLabelText('Phone') as HTMLInputElement).value).toBe('555-0100')
   })
 
   it('retrieves a customer detail record and its loaded associated applications', async () => {
@@ -180,6 +231,38 @@ describe('Frontend pages', () => {
     await waitFor(() => {
       expect(screen.getByText(/application details|Application 22222222/i)).toBeTruthy()
     })
+    expect(await screen.findByText('Application created successfully.')).toBeTruthy()
+  })
+
+  it('allows only one rapid application POST, shows pending state, and preserves failed values', async () => {
+    const post = deferred<Response>()
+    let postCount = 0
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/applications') && init?.method === 'POST') {
+        postCount += 1
+        return post.promise
+      }
+      if (url.includes('/applications')) return jsonResponse(200, [])
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    renderWithOperations(<ApplicationsPage />, '/applications')
+
+    await screen.findByText('Test Customer')
+    fireEvent.change(screen.getByLabelText(/loan amount/i), { target: { value: '123456.00' } })
+    fireEvent.change(screen.getByLabelText(/customer/i), { target: { value: customer.customer_id } })
+    const submit = screen.getByRole('button', { name: /submit application/i })
+    fireEvent.click(submit)
+    fireEvent.click(submit)
+
+    expect(postCount).toBe(1)
+    expect(await screen.findByRole('button', { name: 'Submitting application...' })).toBeTruthy()
+
+    post.resolve(jsonResponse(500, { detail: 'Application creation failed' }))
+    expect(await screen.findByText('Application creation failed')).toBeTruthy()
+    expect((screen.getByLabelText(/loan amount/i) as HTMLInputElement).value).toBe('123456.00')
+    expect((screen.getByLabelText(/customer/i) as HTMLSelectElement).value).toBe(customer.customer_id)
   })
 
   it('directly retrieves application details by route ID', async () => {
@@ -196,6 +279,69 @@ describe('Frontend pages', () => {
 
     expect(await screen.findByText(/Personal Loan/i)).toBeTruthy()
     expect(screen.getByText('Test Customer')).toBeTruthy()
+  })
+
+  it('allows one rapid status PATCH and reports the backend-returned status', async () => {
+    const patch = deferred<Response>()
+    let patchCount = 0
+    const confirmed = { ...application, status: 'PROCESSING' }
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/status') && init?.method === 'PATCH') {
+        patchCount += 1
+        return patch.promise
+      }
+      if (url.endsWith(`/applications/${application.application_id}`)) return jsonResponse(200, application)
+      if (url.endsWith(`/customers/${customer.customer_id}`)) return jsonResponse(200, customer)
+      if (url.includes('/applications')) return jsonResponse(200, [confirmed])
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    render(
+      <MemoryRouter initialEntries={[`/applications/${application.application_id}`]}>
+        <OperationsProvider>
+          <Routes>
+            <Route path="/applications/:applicationId" element={<ApplicationDetailPage />} />
+          </Routes>
+        </OperationsProvider>
+      </MemoryRouter>,
+    )
+
+    const moveButton = await screen.findByRole('button', { name: /Move to DOCUMENTS PENDING/i })
+    fireEvent.click(moveButton)
+    fireEvent.click(moveButton)
+    expect(patchCount).toBe(1)
+
+    patch.resolve(jsonResponse(200, confirmed))
+    expect(await screen.findByText(/Backend confirmed the application status as PROCESSING successfully/i)).toBeTruthy()
+    expect(screen.queryByText(/DOCUMENTS PENDING successfully/i)).not.toBeTruthy()
+  })
+
+  it('shows status update failure without success feedback', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/status') && init?.method === 'PATCH') {
+        return jsonResponse(500, { detail: 'Status update failed' })
+      }
+      if (url.endsWith(`/applications/${application.application_id}`)) return jsonResponse(200, application)
+      if (url.endsWith(`/customers/${customer.customer_id}`)) return jsonResponse(200, customer)
+      if (url.includes('/applications')) return jsonResponse(200, [application])
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    render(
+      <MemoryRouter initialEntries={[`/applications/${application.application_id}`]}>
+        <OperationsProvider>
+          <Routes>
+            <Route path="/applications/:applicationId" element={<ApplicationDetailPage />} />
+          </Routes>
+        </OperationsProvider>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /Move to DOCUMENTS PENDING/i }))
+    expect(await screen.findByText('Status update failed')).toBeTruthy()
+    expect(screen.queryByText(/successfully/i)).not.toBeTruthy()
   })
 
   it('does not allow approve or reject actions from the general application detail', async () => {
@@ -303,16 +449,67 @@ describe('Frontend pages', () => {
   })
 
   it('shows loading and network error states', async () => {
+    let applicationRequestCount = 0
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.includes('/applications')) {
+        applicationRequestCount += 1
+        if (applicationRequestCount === 1) {
         throw new TypeError('Failed to fetch')
+        }
+        return jsonResponse(200, [])
       }
       return jsonResponse(200, [customer])
     }))
     renderWithOperations(<DashboardPage />)
 
     expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByText('Application summary unavailable')).toBeTruthy()
+    const requestCountBeforeRetry = applicationRequestCount
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => {
+      expect(applicationRequestCount).toBeGreaterThan(requestCountBeforeRetry)
+    })
+    expect(await screen.findByText('No loaded applications')).toBeTruthy()
+    expect(screen.getByText('No applications yet')).toBeTruthy()
+  })
+
+  it('marks previously loaded dashboard applications as stale after refresh failure and recovers on retry', async () => {
+    let applicationRequestCount = 0
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/applications')) {
+        applicationRequestCount += 1
+        if (applicationRequestCount === 1) return jsonResponse(200, [application])
+        if (applicationRequestCount === 2) {
+          throw new TypeError('Failed to refresh')
+        }
+        return jsonResponse(200, [application])
+      }
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <OperationsProvider>
+          <DashboardPage />
+          <DashboardRefreshControls />
+        </OperationsProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Personal Loan')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh dashboard data' }))
+    expect(await screen.findByText('Application summary may be stale')).toBeTruthy()
+    expect(screen.getByText(/Showing previously loaded applications/i)).toBeTruthy()
+    expect(screen.queryByText('No loaded applications')).not.toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => {
+      expect(applicationRequestCount).toBe(3)
+    })
+    expect(await screen.findByText('Loaded Application Status Distribution')).toBeTruthy()
+    expect(screen.queryByText('Application summary may be stale')).not.toBeTruthy()
   })
 
   it('renders AppShell navigation and planned module labels', () => {
@@ -329,6 +526,26 @@ describe('Frontend pages', () => {
 
     expect(screen.getByRole('navigation', { name: /main navigation/i })).toBeTruthy()
     expect(screen.getAllByText('Planned').length).toBeGreaterThan(0)
+  })
+
+  it('provides a skip link that moves focus to the main content', async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route index element={<div>Dashboard screen</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const skipLink = screen.getByRole('link', { name: 'Skip to main content' })
+    skipLink.focus()
+    await userEvent.keyboard('{Enter}')
+
+    const mainContent = container.querySelector('#main-content')
+    expect(document.activeElement).toBe(mainContent)
+    expect(mainContent?.getAttribute('tabindex')).toBe('-1')
   })
 
   it('keeps closed mobile navigation out of keyboard focus and restores focus on Escape', async () => {
@@ -461,9 +678,13 @@ describe('Frontend pages', () => {
   it('persists a confirmed decision only through the backend status endpoint', async () => {
     const reviewApplication = { ...application, status: 'REVIEW' }
     const approvedApplication = { ...reviewApplication, status: 'APPROVED' }
+    let statusPatchCount = 0
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (url.includes('/status') && init?.method === 'PATCH') return jsonResponse(200, approvedApplication)
+      if (url.includes('/status') && init?.method === 'PATCH') {
+        statusPatchCount += 1
+        return jsonResponse(200, approvedApplication)
+      }
       if (url.endsWith(`/applications/${reviewApplication.application_id}`)) return jsonResponse(200, reviewApplication)
       if (url.endsWith(`/customers/${customer.customer_id}`)) return jsonResponse(200, customer)
       if (url.includes('/applications')) return jsonResponse(200, [reviewApplication])
@@ -482,9 +703,106 @@ describe('Frontend pages', () => {
 
     await screen.findByRole('button', { name: 'Approve' })
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm approve' }))
+    const confirm = screen.getByRole('button', { name: 'Confirm approve' })
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
 
     expect(await screen.findByText(/Backend confirmed the application status as APPROVED/i)).toBeTruthy()
+    expect(statusPatchCount).toBe(1)
+  })
+
+  for (const scenario of [
+    { action: 'Approve', status: 'APPROVED', returnedStatus: 'REVIEW', label: 'approval' },
+    { action: 'Approve', status: 'APPROVED', returnedStatus: 'REJECTED', label: 'approval' },
+    { action: 'Reject', status: 'REJECTED', returnedStatus: 'APPROVED', label: 'rejection' },
+  ]) {
+    it(`does not report ${scenario.label} success when ${scenario.action} returns ${scenario.returnedStatus}`, async () => {
+      const reviewApplication = { ...application, status: 'REVIEW' }
+      const unexpectedApplication = { ...reviewApplication, status: scenario.returnedStatus }
+      let applicationGetCount = 0
+      vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes('/status') && init?.method === 'PATCH') return jsonResponse(200, unexpectedApplication)
+        if (url.endsWith(`/applications/${reviewApplication.application_id}`)) {
+          applicationGetCount += 1
+          return jsonResponse(200, applicationGetCount === 1 ? reviewApplication : unexpectedApplication)
+        }
+        if (url.endsWith(`/customers/${customer.customer_id}`)) return jsonResponse(200, customer)
+        if (url.includes('/applications')) return jsonResponse(200, [unexpectedApplication])
+        if (url.includes('/customers')) return jsonResponse(200, [customer])
+        return jsonResponse(404, { detail: 'Not found' })
+      }))
+      render(
+        <MemoryRouter initialEntries={[`/applications/${reviewApplication.application_id}/review`]}>
+          <OperationsProvider>
+            <Routes>
+              <Route path="/applications/:applicationId/review" element={<ApplicationReviewWorkspacePage />} />
+            </Routes>
+          </OperationsProvider>
+        </MemoryRouter>,
+      )
+
+      fireEvent.click(await screen.findByRole('button', { name: scenario.action }))
+      fireEvent.click(screen.getByRole('button', { name: `Confirm ${scenario.action.toLowerCase()}` }))
+      expect(await screen.findByText(new RegExp(`requested ${scenario.label} was not confirmed`, 'i'))).toBeTruthy()
+      expect(screen.queryByText(/Backend confirmed the application status/i)).not.toBeTruthy()
+    })
+  }
+
+  it('shows reject success only after the backend confirms rejection', async () => {
+    const reviewApplication = { ...application, status: 'REVIEW' }
+    const rejectedApplication = { ...reviewApplication, status: 'REJECTED' }
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/status') && init?.method === 'PATCH') return jsonResponse(200, rejectedApplication)
+      if (url.endsWith(`/applications/${reviewApplication.application_id}`)) return jsonResponse(200, reviewApplication)
+      if (url.endsWith(`/customers/${customer.customer_id}`)) return jsonResponse(200, customer)
+      if (url.includes('/applications')) return jsonResponse(200, [reviewApplication])
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    render(
+      <MemoryRouter initialEntries={[`/applications/${reviewApplication.application_id}/review`]}>
+        <OperationsProvider>
+          <Routes>
+            <Route path="/applications/:applicationId/review" element={<ApplicationReviewWorkspacePage />} />
+          </Routes>
+        </OperationsProvider>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reject' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm reject' }))
+    expect(await screen.findByText(/Backend confirmed the application status as REJECTED/i)).toBeTruthy()
+  })
+
+  it('shows human decision failure without displaying success', async () => {
+    const reviewApplication = { ...application, status: 'REVIEW' }
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/status') && init?.method === 'PATCH') {
+        return jsonResponse(500, { detail: 'Decision update failed' })
+      }
+      if (url.endsWith(`/applications/${reviewApplication.application_id}`)) return jsonResponse(200, reviewApplication)
+      if (url.endsWith(`/customers/${customer.customer_id}`)) return jsonResponse(200, customer)
+      if (url.includes('/applications')) return jsonResponse(200, [reviewApplication])
+      if (url.includes('/customers')) return jsonResponse(200, [customer])
+      return jsonResponse(404, { detail: 'Not found' })
+    }))
+    render(
+      <MemoryRouter initialEntries={[`/applications/${reviewApplication.application_id}/review`]}>
+        <OperationsProvider>
+          <Routes>
+            <Route path="/applications/:applicationId/review" element={<ApplicationReviewWorkspacePage />} />
+          </Routes>
+        </OperationsProvider>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Approve' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm approve' }))
+    expect(await screen.findByText('Decision update failed')).toBeTruthy()
+    expect(screen.queryByText(/Backend confirmed/i)).not.toBeTruthy()
   })
 
   it('renders agent operations without fabricated workflow metrics', () => {

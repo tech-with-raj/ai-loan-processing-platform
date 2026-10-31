@@ -49,6 +49,18 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault()
+          const mainContent = document.getElementById('main-content')
+          mainContent?.focus()
+          mainContent?.scrollIntoView?.()
+        }}
+      >
+        Skip to main content
+      </a>
       <aside
         ref={sidebarRef}
         id="mobile-navigation"
@@ -99,7 +111,7 @@ export function AppShell() {
           </button>
           <strong>BestBank</strong>
         </header>
-        <main className="content">
+        <main id="main-content" className="content" tabIndex={-1}>
           <RouteErrorBoundary>
             <Outlet />
           </RouteErrorBoundary>

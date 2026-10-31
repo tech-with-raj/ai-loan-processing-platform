@@ -8,6 +8,8 @@ export interface OperationsContextValue {
   applicationsLoading: boolean
   customersError: string
   applicationsError: string
+  applicationsLoaded: boolean
+  applicationsStale: boolean
   refresh: () => Promise<void>
 }
 

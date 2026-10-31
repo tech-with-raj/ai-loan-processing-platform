@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { Card } from '../components/Card'
@@ -7,6 +7,7 @@ import { Button } from '../components/Button'
 import { Input } from '../components/FormControls'
 import { SearchInput } from '../components/SearchInput'
 import { Pagination } from '../components/Pagination'
+import { EmptyState, LoadingIndicator, ErrorState } from '../components/FeedbackStates'
 import { useOperations } from '../hooks/useOperations'
 import { api } from '../services/api'
 
@@ -22,6 +23,7 @@ export function CustomersPage() {
   const [query, setQuery] = useState('')
   const [form, setForm] = useState({ name: '', email: '', phone: '' })
   const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
   const [formError, setFormError] = useState('')
   const [success, setSuccess] = useState('')
   const [page, setPage] = useState(1)
@@ -40,7 +42,8 @@ export function CustomersPage() {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (submitting) return
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmitting(true)
     setFormError('')
     setSuccess('')
@@ -56,6 +59,7 @@ export function CustomersPage() {
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Unable to create the customer.')
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
   }
@@ -80,11 +84,22 @@ export function CustomersPage() {
           }
         >
           {customersLoading ? (
-            <StateMessage>Loading customers...</StateMessage>
+            <LoadingIndicator>Loading customer directory...</LoadingIndicator>
           ) : customersError ? (
-            <StateMessage tone="error">{customersError}</StateMessage>
+            <ErrorState title="Customer directory unavailable" onRetry={() => void refresh()}>
+              {customersError}
+            </ErrorState>
+          ) : customers.length === 0 && !normalized ? (
+            <EmptyState
+              title="No customers yet"
+              action={<Button onClick={() => document.querySelector<HTMLInputElement>('input[name="customer-name"]')?.focus()}>Create a customer</Button>}
+            >
+              Create your first customer before adding a loan application.
+            </EmptyState>
           ) : visible.length === 0 ? (
-            <StateMessage>No customers match your search.</StateMessage>
+            <EmptyState title="No customers match your search.">
+              Try a different name, email, phone number, or customer ID.
+            </EmptyState>
           ) : (
             <>
               <div className="table-wrap">
@@ -112,12 +127,14 @@ export function CustomersPage() {
         </Card>
         <Card title={<h3>Create Customer</h3>}>
           <form className="application-form" onSubmit={submit}>
-            <Input label="Full Name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required maxLength={100} />
+            <Input name="customer-name" label="Full Name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required maxLength={100} />
             <Input label="Email" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required />
             <Input label="Phone" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} maxLength={20} />
             {formError ? <StateMessage tone="error">{formError}</StateMessage> : null}
             {success ? <StateMessage tone="success">{success}</StateMessage> : null}
-            <Button type="submit" fullWidth disabled={submitting}>{submitting ? 'Creating...' : 'Create customer'}</Button>
+            <Button type="submit" fullWidth disabled={submitting} aria-busy={submitting}>
+              {submitting ? 'Creating customer...' : 'Create customer'}
+            </Button>
           </form>
         </Card>
       </div>

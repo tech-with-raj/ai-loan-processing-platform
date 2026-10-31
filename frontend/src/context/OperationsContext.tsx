@@ -21,6 +21,8 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
   const [applicationsLoading, setApplicationsLoading] = useState(true)
   const [customersError, setCustomersError] = useState('')
   const [applicationsError, setApplicationsError] = useState('')
+  const [applicationsLoaded, setApplicationsLoaded] = useState(false)
+  const [applicationsStale, setApplicationsStale] = useState(false)
   const refreshControllerRef = useRef<AbortController | null>(null)
 
   const refresh = useCallback(async () => {
@@ -47,8 +49,11 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
 
     if (applicationResult.status === 'fulfilled') {
       setApplications(applicationResult.value)
+      setApplicationsLoaded(true)
+      setApplicationsStale(false)
     } else {
       setApplicationsError(errorMessage(applicationResult.reason, 'Unable to load applications.'))
+      setApplicationsStale(true)
     }
 
     setCustomersLoading(false)
@@ -76,6 +81,8 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
       applicationsLoading,
       customersError,
       applicationsError,
+      applicationsLoaded,
+      applicationsStale,
       refresh,
     }),
     [
@@ -85,6 +92,8 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
       applicationsLoading,
       customersError,
       applicationsError,
+      applicationsLoaded,
+      applicationsStale,
       refresh,
     ],
   )

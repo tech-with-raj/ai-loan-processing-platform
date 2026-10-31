@@ -12,7 +12,7 @@ import { DocumentList } from '../components/DocumentList'
 import { useOperations } from '../hooks/useOperations'
 import { api, isAbortError } from '../services/api'
 import { ApiError } from '../services/api'
-import type { Customer, LoanApplication } from '../types'
+import type { ApplicationStatus, Customer, LoanApplication } from '../types'
 import { Button } from '../components/Button'
 
 export function ApplicationReviewWorkspacePage() {
@@ -30,6 +30,7 @@ export function ApplicationReviewWorkspacePage() {
   const [decisionSuccess, setDecisionSuccess] = useState('')
   const [decisionError, setDecisionError] = useState('')
   const decisionControllerRef = useRef<AbortController | null>(null)
+  const decisionSubmittingRef = useRef(false)
 
   useEffect(() => {
     if (!applicationId) return
@@ -87,7 +88,8 @@ export function ApplicationReviewWorkspacePage() {
   }, [applicationId, customerRetryKey])
 
   const submitDecision = async (status: 'APPROVED' | 'REJECTED') => {
-    if (!application || application.status !== 'REVIEW' || decisionSubmitting) return
+    if (!application || application.status !== 'REVIEW' || decisionSubmittingRef.current) return
+    decisionSubmittingRef.current = true
     decisionControllerRef.current?.abort()
     const controller = new AbortController()
     decisionControllerRef.current = controller
@@ -96,6 +98,19 @@ export function ApplicationReviewWorkspacePage() {
     setDecisionError('')
     try {
       const updated = await api.updateApplicationStatus(application.application_id, { status }, controller.signal)
+      const validStatus: ApplicationStatus[] = ['CREATED', 'DOCUMENTS_PENDING', 'PROCESSING', 'VALIDATION', 'REVIEW', 'APPROVED', 'REJECTED']
+      const requestedDecision = status === 'APPROVED' ? 'approval' : 'rejection'
+      if (!validStatus.includes(updated.status) || updated.status !== status) {
+        setDecisionError(`The requested ${requestedDecision} was not confirmed by the backend${validStatus.includes(updated.status) ? `. Backend status: ${updated.status.replaceAll('_', ' ')}` : ''}.`)
+        try {
+          const refreshedApplication = await api.getApplication(application.application_id, controller.signal)
+          if (!controller.signal.aborted) setApplication(refreshedApplication)
+        } catch {
+          // Keep the explicit unconfirmed-decision error visible if the refresh fails.
+        }
+        await refresh()
+        return
+      }
       setApplication(updated)
       await refresh()
       setDecisionSuccess(`Backend confirmed the application status as ${updated.status.replaceAll('_', ' ')}.`)
@@ -103,6 +118,7 @@ export function ApplicationReviewWorkspacePage() {
       if (isAbortError(decisionFailure) || controller.signal.aborted) return
       setDecisionError(decisionFailure instanceof Error ? decisionFailure.message : 'Unable to record the human decision.')
     } finally {
+      decisionSubmittingRef.current = false
       setDecisionSubmitting(false)
     }
   }

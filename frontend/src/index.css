@@ -81,9 +81,10 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 a:focus-visible,
-[tabindex]:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+[tabindex="0"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
   border-color: var(--color-focus);
 }
 
