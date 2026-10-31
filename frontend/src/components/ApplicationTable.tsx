@@ -1,4 +1,6 @@
 import type { Customer, LoanApplication } from '../types'
+import { StatusBadge } from './StatusBadge'
+import { Button } from './Button'
 
 interface ApplicationTableProps {
   applications: LoanApplication[]
@@ -46,12 +48,12 @@ export function ApplicationTable({
                 <td>{customer?.name ?? 'Unknown customer'}</td>
                 <td>{application.loan_type}</td>
                 <td>{formatCurrency(application.loan_amount)}</td>
-                <td><span className="status-pill">{application.status}</span></td>
+                <td><StatusBadge status={application.status} /></td>
                 <td>{new Date(application.created_at).toLocaleDateString()}</td>
                 <td>
-                  <button className="link-button" type="button" onClick={() => onSelect(application.application_id)}>
+                  <Button variant="ghost" onClick={() => onSelect(application.application_id)}>
                     View
-                  </button>
+                  </Button>
                 </td>
               </tr>
             )

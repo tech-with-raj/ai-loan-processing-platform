@@ -31,3 +31,18 @@ export interface CreateApplicationInput {
   loan_type: LoanType
   loan_amount: string
 }
+
+export interface CreateCustomerInput {
+  name: string
+  email: string
+  phone?: string | null
+}
+
+export interface UpdateApplicationStatusInput {
+  status: ApplicationStatus
+}
+
+export interface PaginationQuery {
+  limit?: number
+  offset?: number
+}
