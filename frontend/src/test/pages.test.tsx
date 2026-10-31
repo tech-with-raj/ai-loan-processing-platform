@@ -10,6 +10,8 @@ import { CustomerDetailPage } from '../pages/CustomerDetailPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { HumanReviewQueuePage } from '../pages/HumanReviewQueuePage'
 import { ApplicationReviewWorkspacePage } from '../pages/ApplicationReviewWorkspacePage'
+import { AgentOperationsPage } from '../pages/AgentOperationsPage'
+import { WorkflowExecutionPage } from '../pages/WorkflowExecutionPage'
 
 const customer = {
   customer_id: '11111111-1111-4111-8111-111111111111',
@@ -306,5 +308,34 @@ describe('Frontend pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm approve' }))
 
     expect(await screen.findByText(/Backend confirmed the application status as APPROVED/i)).toBeTruthy()
+  })
+
+  it('renders agent operations without fabricated workflow metrics', () => {
+    render(
+      <MemoryRouter initialEntries={['/agent-operations']}>
+        <Routes>
+          <Route path="/agent-operations" element={<AgentOperationsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: 'Agent Operations' })).toBeTruthy()
+    expect(screen.getByText(/Operational metrics are unavailable/i)).toBeTruthy()
+    expect(screen.getByText(/Workflow monitoring is pending backend integration/i)).toBeTruthy()
+    expect(screen.queryByText(/12 running/i)).not.toBeTruthy()
+  })
+
+  it('renders workflow execution detail and human escalation as disconnected', () => {
+    render(
+      <MemoryRouter initialEntries={['/workflows/test-workflow-1']}>
+        <Routes>
+          <Route path="/workflows/:workflowId" element={<WorkflowExecutionPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(screen.getByText(/Workflow execution test-workflow-1/i)).toBeTruthy()
+    expect(screen.getByText(/Workflow execution data is not connected/i)).toBeTruthy()
+    expect(screen.getByText(/No workflow execution events/i)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Human Escalation' })).toBeTruthy()
+    expect(screen.getByText(/Human escalation details are pending backend integration/i)).toBeTruthy()
   })
 })

@@ -72,3 +72,13 @@ export type {
   ProposedProcessingEvent,
   ProposedValidationFinding,
 } from './contracts/aiDocumentProcessing'
+
+export type {
+  ProposedPolicyCheck,
+  ProposedToolInvocation,
+  ProposedWorkflowEvent,
+  ProposedWorkflowExecution,
+  ProposedWorkflowState,
+  ProposedWorkflowSummary,
+  ProposedWorkflowTask,
+} from './contracts/agentWorkflows'

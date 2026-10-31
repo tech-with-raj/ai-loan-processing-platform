@@ -12,6 +12,8 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { HumanReviewQueuePage } from './pages/HumanReviewQueuePage'
 import { ApplicationReviewWorkspacePage } from './pages/ApplicationReviewWorkspacePage'
+import { AgentOperationsPage } from './pages/AgentOperationsPage'
+import { WorkflowExecutionPage } from './pages/WorkflowExecutionPage'
 
 function AppRoutes() {
   return (
@@ -38,6 +40,8 @@ function AppRoutes() {
             element={<HumanReviewQueuePage />}
           />
           <Route path="applications/:applicationId/review" element={<ApplicationReviewWorkspacePage />} />
+          <Route path="agent-operations" element={<AgentOperationsPage />} />
+          <Route path="workflows/:workflowId" element={<WorkflowExecutionPage />} />
           <Route
             path="ai-insights"
             element={

@@ -21,6 +21,10 @@ import { DocumentManager } from '../components/DocumentManager'
 import { HumanDecisionPanel } from '../components/HumanDecisionPanel'
 import { HumanReviewNotes } from '../components/HumanReviewNotes'
 import { ReviewHistory } from '../components/ReviewHistory'
+import { WorkflowExecutionTimeline } from '../components/WorkflowExecutionTimeline'
+import { ToolExecutionDetails } from '../components/ToolExecutionDetails'
+import { PolicySafetyVisibility } from '../components/PolicySafetyVisibility'
+import { WorkflowControls } from '../components/WorkflowControls'
 
 describe('Shared design system components', () => {
   it('renders a button and handles interaction and disabled state', async () => {
@@ -305,5 +309,54 @@ describe('Human review components', () => {
     expect(screen.getByRole('button', { name: /Save review notes/i }).hasAttribute('disabled')).toBe(true)
     expect(screen.getByText(/Review-note persistence is not connected/i)).toBeTruthy()
     expect(screen.getByText(/Review audit history pending/i)).toBeTruthy()
+  })
+})
+
+describe('Agent workflow components', () => {
+  it('renders disconnected and empty workflow states', () => {
+    render(<WorkflowExecutionTimeline />)
+    expect(screen.getByText(/No workflow execution events/i)).toBeTruthy()
+
+    render(<ToolExecutionDetails />)
+    expect(screen.getByText(/Tool invocation and execution data/i)).toBeTruthy()
+  })
+
+  it('distinguishes requested tool invocations from confirmed execution', () => {
+    render(
+      <ToolExecutionDetails invocations={[
+        {
+          invocation_id: 'test-tool-request-1',
+          tool_name: 'Test document lookup',
+          status: 'REQUESTED',
+        },
+        {
+          invocation_id: 'test-tool-result-1',
+          tool_name: 'Test document lookup',
+          status: 'EXECUTED',
+          output_summary: 'Test-only mocked backend output',
+          duration_ms: 125,
+        },
+      ]} />,
+    )
+    expect(screen.getAllByText('REQUESTED').length).toBeGreaterThan(0)
+    expect(screen.getByText(/execution is not confirmed/i)).toBeTruthy()
+    expect(screen.getAllByText('EXECUTED').length).toBeGreaterThan(0)
+    expect(screen.getByText(/Test-only mocked backend output/i)).toBeTruthy()
+  })
+
+  it('renders policy results and unsupported workflow controls honestly', () => {
+    render(
+      <>
+        <PolicySafetyVisibility checks={[
+          { check_id: 'test-policy-1', name: 'Test policy check', status: 'REQUIRES_HUMAN_APPROVAL', message: 'Test fixture data only' },
+        ]} />
+        <WorkflowControls />
+      </>,
+    )
+    expect(screen.getByText(/Policy-bounded agent actions/i)).toBeTruthy()
+    expect(screen.getByText('Test policy check')).toBeTruthy()
+    expect(screen.getByText(/REQUIRES HUMAN APPROVAL/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Start workflow/i }).hasAttribute('disabled')).toBe(true)
+    expect(screen.queryByText(/workflow started successfully/i)).not.toBeTruthy()
   })
 })
