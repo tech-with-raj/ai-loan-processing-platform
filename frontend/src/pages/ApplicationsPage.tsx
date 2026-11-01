@@ -60,7 +60,8 @@ function ApplicationForm() {
 
   return (
     <form className="application-form" onSubmit={submit}>
-      <div>
+      <fieldset className="form-section">
+        <legend>Customer information</legend>
         <span className="form-label">Customer</span>
         {customersLoading ? (
           <select className="form-control" disabled aria-label="Customer"><option>Loading customers...</option></select>
@@ -85,26 +86,29 @@ function ApplicationForm() {
             ))}
           </Select>
         )}
-      </div>
-      <Select
-        label="Loan Type"
+      </fieldset>
+      <fieldset className="form-section">
+        <legend>Loan information</legend>
+        <Select
+          label="Loan Type"
           value={form.loan_type}
           onChange={(event) => setForm((current) => ({ ...current, loan_type: event.target.value as CreateApplicationInput['loan_type'] }))}
-      >
+        >
           <option>Personal Loan</option>
           <option>Home Loan</option>
           <option>Vehicle Loan</option>
           <option>Business Loan</option>
-      </Select>
-      <Input
-        label="Loan Amount (INR)"
+        </Select>
+        <Input
+          label="Loan Amount (INR)"
           type="number"
           min="1000"
           step="0.01"
           value={form.loan_amount}
           onChange={(event) => setForm((current) => ({ ...current, loan_amount: event.target.value }))}
           required
-      />
+        />
+      </fieldset>
       {error ? <StateMessage tone="error">{error}</StateMessage> : null}
       {created ? <StateMessage tone="success">Application created successfully.</StateMessage> : null}
       <Button

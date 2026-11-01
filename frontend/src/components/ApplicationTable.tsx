@@ -26,13 +26,13 @@ export function ApplicationTable({
 
   return (
     <div className="table-wrap">
-      <table>
+      <table className="application-table">
         <thead>
           <tr>
             <th>Application ID</th>
             <th>Customer</th>
             <th>Loan Type</th>
-            <th>Loan Amount</th>
+            <th className="numeric-column">Loan Amount</th>
             <th>Status</th>
             <th>Created Date</th>
             <th>Action</th>
@@ -44,13 +44,13 @@ export function ApplicationTable({
 
             return (
               <tr key={application.application_id}>
-                <td>{application.application_id.slice(0, 8)}</td>
+                <td><span className="application-id">{application.application_id.slice(0, 8)}</span></td>
                 <td>{customer?.name ?? 'Unknown customer'}</td>
                 <td>{application.loan_type}</td>
-                <td>{formatCurrency(application.loan_amount)}</td>
+                <td className="numeric-column">{formatCurrency(application.loan_amount)}</td>
                 <td><StatusBadge status={application.status} /></td>
                 <td>{new Date(application.created_at).toLocaleDateString()}</td>
-                <td>
+                <td className="table-action-column">
                   <Button variant="ghost" onClick={() => onSelect(application.application_id)}>
                     View
                   </Button>

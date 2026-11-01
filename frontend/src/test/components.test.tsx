@@ -26,6 +26,10 @@ import { ToolExecutionDetails } from '../components/ToolExecutionDetails'
 import { PolicySafetyVisibility } from '../components/PolicySafetyVisibility'
 import { WorkflowControls } from '../components/WorkflowControls'
 import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
+import { Card } from '../components/Card'
+import { LoadingIndicator, Skeleton } from '../components/FeedbackStates'
+import { StatusBadge } from '../components/StatusBadge'
+import { SearchInput } from '../components/SearchInput'
 import { MemoryRouter } from 'react-router-dom'
 
 describe('Shared design system components', () => {
@@ -57,6 +61,21 @@ describe('Shared design system components', () => {
 
     rerender(<Button disabled>Continue</Button>)
     expect(screen.getByRole('button', { name: 'Continue' }).hasAttribute('disabled')).toBe(true)
+  })
+
+  it('renders danger and loading button variants consistently', () => {
+    render(
+      <>
+        <Button variant="danger">Reject application</Button>
+        <Button loading loadingText="Saving decision">Save decision</Button>
+      </>
+    )
+
+    expect(screen.getByRole('button', { name: 'Reject application' }).className).toContain('button-danger')
+    const loadingButton = screen.getByRole('button', { name: 'Saving decision' })
+    expect(loadingButton.className).toContain('button-primary')
+    expect(loadingButton.hasAttribute('disabled')).toBe(true)
+    expect(loadingButton.getAttribute('aria-busy')).toBe('true')
   })
 
   it('connects input labels, hints, and validation errors', () => {
@@ -114,6 +133,34 @@ describe('Shared design system components', () => {
 
     expect(screen.getByRole('status').getAttribute('aria-atomic')).toBe('true')
     expect(screen.getByRole('alert').getAttribute('aria-atomic')).toBe('true')
+  })
+
+  it('presents application statuses and shared feedback states with accessible text', () => {
+    render(
+      <>
+        <StatusBadge status="CREATED" />
+        <StatusBadge status="DOCUMENTS_PENDING" />
+        <StatusBadge status="PROCESSING" />
+        <StatusBadge status="REVIEW" />
+        <StatusBadge status="APPROVED" />
+        <StatusBadge status="REJECTED" />
+        <Badge tone="danger">Failed</Badge>
+        <Badge tone="neutral">Unavailable</Badge>
+        <LoadingIndicator>Loading applications...</LoadingIndicator>
+        <Skeleton />
+        <Card title={<h3>Customer details</h3>}>Account information</Card>
+        <SearchInput label="Find customer" showLabel />
+      </>
+    )
+
+    expect(screen.getByLabelText('Application status: CREATED').textContent).toBe('Draft')
+    expect(screen.getByLabelText('Application status: DOCUMENTS PENDING').textContent).toBe('Submitted')
+    expect(screen.getByLabelText('Application status: APPROVED').textContent).toBe('Approved')
+    expect(screen.getByText('Failed')).toBeTruthy()
+    expect(screen.getByText('Unavailable')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain('Loading applications')
+    expect(screen.getByRole('heading', { name: 'Customer details' })).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Find customer' })).toBeTruthy()
   })
 })
 

@@ -59,11 +59,12 @@ export function DashboardPage() {
         actions={<Link className="primary-button" to="/applications">Create new application</Link>}
       />
 
-      <section className="stats-grid" aria-label="Application summary metrics">
-        <div className="stat-card"><span>Loaded Applications</span><strong>{summary.total}</strong></div>
-        <div className="stat-card"><span>Loaded Pending</span><strong>{summary.pending}</strong></div>
-        <div className="stat-card"><span>Loaded Approved</span><strong>{summary.approved}</strong></div>
-        <div className="stat-card"><span>Loaded Requiring Review</span><strong>{summary.review}</strong></div>
+      <section className="stats-grid metrics-grid" aria-label="Application summary metrics">
+        <div className="stat-card metric-card metric-neutral"><span>Total loaded</span><strong>{summary.total}</strong><small>Applications</small></div>
+        <div className="stat-card metric-card metric-warning"><span>Loaded pending</span><strong>{summary.pending}</strong><small>Created or awaiting documents</small></div>
+        <div className="stat-card metric-card metric-review"><span>Requiring review</span><strong>{summary.review}</strong><small>Human oversight required</small></div>
+        <div className="stat-card metric-card metric-success"><span>Approved</span><strong>{summary.approved}</strong><small>Confirmed decisions</small></div>
+        <div className="stat-card metric-card metric-danger"><span>Rejected</span><strong>{summary.rejected}</strong><small>Confirmed decisions</small></div>
       </section>
 
       <Card className="status-distribution-card" title={<h3>Loaded Application Status Distribution</h3>}>

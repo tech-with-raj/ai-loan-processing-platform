@@ -596,6 +596,9 @@ describe('Frontend pages', () => {
     renderWithOperations(<HumanReviewQueuePage />, '/review')
 
     expect(await screen.findByText(/No applications currently have the backend/i)).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Search review applications' })).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: 'Review status' })).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: 'Application status' })).toBeTruthy()
     expect(screen.getByText(/review assignment API is not available/i)).toBeTruthy()
     expect(screen.queryByText(/assigned to reviewer/i)).not.toBeTruthy()
   })
@@ -816,6 +819,8 @@ describe('Frontend pages', () => {
     expect(screen.getByRole('heading', { name: 'Agent Operations' })).toBeTruthy()
     expect(screen.getByText(/Operational metrics are unavailable/i)).toBeTruthy()
     expect(screen.getByText(/Workflow monitoring is pending backend integration/i)).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Search workflows' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('combobox', { name: 'Workflow state' }).hasAttribute('disabled')).toBe(true)
     expect(screen.queryByText(/12 running/i)).not.toBeTruthy()
   })
 

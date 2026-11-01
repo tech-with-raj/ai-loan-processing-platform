@@ -40,6 +40,7 @@ export function HumanReviewQueuePage() {
         <div className="review-filter-bar" aria-label="Review queue filters">
           <SearchInput
             label="Search review applications"
+            showLabel
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by application or customer"
@@ -56,7 +57,7 @@ export function HumanReviewQueuePage() {
             value={applicationStatus}
             onChange={(event) => setApplicationStatus(event.target.value)}
           >
-            <option value="ALL">All application statuses in review</option>
+            <option value="ALL">All statuses in review</option>
             <option value="REVIEW">Review</option>
           </Select>
         </div>

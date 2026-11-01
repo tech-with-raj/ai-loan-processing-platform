@@ -17,7 +17,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
 
 export function EmptyState({ title = 'No data available', children, action }: { title?: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="empty-state">
+    <div className="empty-state" role="status">
       <strong>{title}</strong>
       {children ? <div>{children}</div> : null}
       {action ? <div className="empty-state-action">{action}</div> : null}

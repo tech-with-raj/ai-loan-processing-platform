@@ -53,7 +53,7 @@ export function HumanDecisionPanel({
           Approve
         </Button>
         <Button
-          variant="secondary"
+          variant="danger"
           disabled={!connected || submitting}
           onClick={() => setPendingDecision('REJECT')}
         >

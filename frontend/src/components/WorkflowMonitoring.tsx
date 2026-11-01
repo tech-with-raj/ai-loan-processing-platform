@@ -7,10 +7,11 @@ import { StateMessage } from './StateMessage'
 export function WorkflowMonitoring() {
   return (
     <Card
+      className="workflow-monitoring-card"
       title={<h3>Workflow Monitoring</h3>}
       actions={
         <div className="workflow-monitoring-controls">
-          <SearchInput disabled label="Search workflows" placeholder="Search unavailable" />
+          <SearchInput disabled showLabel label="Search workflows" placeholder="Search unavailable" />
           <Select disabled label="Workflow state" value="UNAVAILABLE">
             <option value="UNAVAILABLE">Unavailable without backend data</option>
           </Select>
