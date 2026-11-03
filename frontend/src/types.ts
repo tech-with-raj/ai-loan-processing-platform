@@ -31,3 +31,54 @@ export interface CreateApplicationInput {
   loan_type: LoanType
   loan_amount: string
 }
+
+export interface CreateCustomerInput {
+  name: string
+  email: string
+  phone?: string | null
+}
+
+export interface UpdateApplicationStatusInput {
+  status: ApplicationStatus
+}
+
+export interface PaginationQuery {
+  limit?: number
+  offset?: number
+}
+
+export type DocumentStatus =
+  | 'MISSING'
+  | 'UPLOADED'
+  | 'PROCESSING'
+  | 'PROCESSED'
+  | 'VALIDATION_REQUIRED'
+  | 'VALID'
+  | 'INVALID'
+
+export interface LoanDocument {
+  document_id: string
+  application_id: string
+  original_filename: string
+  content_type: string
+  status: DocumentStatus
+  created_at: string
+}
+
+export type {
+  ProposedDocumentProcessing,
+  ProposedExtractedField,
+  ProposedExtractedSection,
+  ProposedProcessingEvent,
+  ProposedValidationFinding,
+} from './contracts/aiDocumentProcessing'
+
+export type {
+  ProposedPolicyCheck,
+  ProposedToolInvocation,
+  ProposedWorkflowEvent,
+  ProposedWorkflowExecution,
+  ProposedWorkflowState,
+  ProposedWorkflowSummary,
+  ProposedWorkflowTask,
+} from './contracts/agentWorkflows'
